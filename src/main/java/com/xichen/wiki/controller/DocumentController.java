@@ -12,10 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
-import javax.validation.constraints.Min;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 
 /**
@@ -102,7 +102,7 @@ public class DocumentController {
 
     @Operation(summary = "删除文档", description = "删除指定文档")
     @DeleteMapping("/{id}")
-    public Result<Void> deleteDocument(
+    public Result<String> deleteDocument(
             @RequestHeader("Authorization") String token,
             @Parameter(description = "文档ID") @PathVariable @NotNull Long id) {
         
@@ -115,7 +115,7 @@ public class DocumentController {
 
     @Operation(summary = "切换收藏状态", description = "切换文档的收藏状态")
     @PostMapping("/{id}/favorite")
-    public Result<Map<String, Object>> toggleFavorite(
+    public Result<String> toggleFavorite(
             @RequestHeader("Authorization") String token,
             @Parameter(description = "文档ID") @PathVariable @NotNull Long id) {
         

@@ -27,6 +27,18 @@ public class Tag {
     private String name;
 
     /**
+     * 标签描述
+     */
+    @TableField("description")
+    private String description;
+
+    /**
+     * 使用次数
+     */
+    @TableField("usage_count")
+    private Long usageCount;
+
+    /**
      * 用户ID，NULL表示公共标签
      */
     @TableField("user_id")
@@ -37,6 +49,12 @@ public class Tag {
      */
     @TableField(value = "created_at", fill = FieldFill.INSERT)
     private LocalDateTime createdAt;
+
+    /**
+     * 更新时间
+     */
+    @TableField(value = "updated_at", fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updatedAt;
 
     /**
      * 逻辑删除标志

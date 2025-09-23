@@ -39,6 +39,12 @@ public class Ebook {
     private String fileKey;
 
     /**
+     * 文件URL
+     */
+    @TableField("file_url")
+    private String fileUrl;
+
+    /**
      * 文件大小（字节）
      */
     @TableField("file_size")
@@ -73,6 +79,12 @@ public class Ebook {
      */
     @TableField("category_id")
     private Long categoryId;
+
+    /**
+     * 是否公开
+     */
+    @TableField("is_public")
+    private Boolean isPublic;
 
     /**
      * 是否收藏

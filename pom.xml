@@ -42,11 +42,13 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 		
-		<!-- Spring Boot Data JPA Starter -->
+		<!-- Spring Boot Data JPA Starter - 已移除，使用MyBatis Plus替代 -->
+		<!--
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
+		-->
 		
 		<!-- Spring Boot Data Redis Starter -->
 		<dependency>
@@ -104,6 +106,13 @@
 			<groupId>commons-io</groupId>
 			<artifactId>commons-io</artifactId>
 			<version>2.11.0</version>
+		</dependency>
+		
+		<!-- 七牛云SDK -->
+		<dependency>
+			<groupId>com.qiniu</groupId>
+			<artifactId>qiniu-java-sdk</artifactId>
+			<version>7.11.0</version>
 		</dependency>
 		
 		<!-- Jackson for JSON processing -->

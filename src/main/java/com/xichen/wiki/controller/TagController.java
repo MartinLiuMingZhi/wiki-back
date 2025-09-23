@@ -1,0 +1,292 @@
+package com.xichen.wiki.controller;
+
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xichen.wiki.common.Result;
+import com.xichen.wiki.entity.Tag;
+import com.xichen.wiki.service.TagService;
+import com.xichen.wiki.util.UserContext;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 标签控制器
+ */
+@Slf4j
+@RestController
+@RequestMapping("/api/v1/tags")
+@RequiredArgsConstructor
+@Validated
+@io.swagger.v3.oas.annotations.tags.Tag(name = "标签管理", description = "标签创建、管理、搜索相关接口")
+public class TagController {
+
+    private final TagService tagService;
+
+    @Operation(summary = "创建标签", description = "创建新的标签")
+    @PostMapping
+    public Result<Tag> createTag(@Valid @RequestBody CreateTagRequest request) {
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+
+        try {
+            Tag tag = tagService.createTag(userId, request.getName(), request.getDescription());
+            return Result.success("标签创建成功", tag);
+        } catch (Exception e) {
+            log.error("标签创建失败：{}", e.getMessage());
+            return Result.error("标签创建失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "更新标签", description = "更新标签信息")
+    @PutMapping("/{id}")
+    public Result<Tag> updateTag(
+            @Parameter(description = "标签ID") @PathVariable @NotNull Long id,
+            @Valid @RequestBody UpdateTagRequest request) {
+        
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+
+        try {
+            Tag tag = tagService.updateTag(id, userId, request.getName(), request.getDescription());
+            return Result.success("标签更新成功", tag);
+        } catch (Exception e) {
+            log.error("标签更新失败：{}", e.getMessage());
+            return Result.error("标签更新失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "获取标签详情", description = "获取指定标签的详细信息")
+    @GetMapping("/{id}")
+    public Result<Tag> getTagDetail(
+            @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
+        
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+
+        try {
+            Tag tag = tagService.getTagDetail(id, userId);
+            if (tag == null) {
+                return Result.error(404, "标签不存在");
+            }
+            return Result.success(tag);
+        } catch (Exception e) {
+            log.error("获取标签详情失败：{}", e.getMessage());
+            return Result.error("获取标签详情失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "获取用户标签列表", description = "分页获取用户的所有标签")
+    @GetMapping
+    public Result<Page<Tag>> getUserTags(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
+        
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+
+        try {
+            Page<Tag> tags = tagService.getUserTags(userId, page, size, keyword);
+            return Result.success(tags);
+        } catch (Exception e) {
+            log.error("获取标签列表失败：{}", e.getMessage());
+            return Result.error("获取标签列表失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "获取公共标签列表", description = "获取所有用户都可以使用的公共标签")
+    @GetMapping("/public")
+    public Result<Page<Tag>> getPublicTags(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
+        
+        try {
+            Page<Tag> tags = tagService.getPublicTags(page, size, keyword);
+            return Result.success(tags);
+        } catch (Exception e) {
+            log.error("获取公共标签列表失败：{}", e.getMessage());
+            return Result.error("获取公共标签列表失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "获取热门标签", description = "获取使用频率最高的标签")
+    @GetMapping("/popular")
+    public Result<List<Tag>> getPopularTags(
+            @Parameter(description = "数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit) {
+        
+        try {
+            List<Tag> tags = tagService.getPopularTags(limit);
+            return Result.success(tags);
+        } catch (Exception e) {
+            log.error("获取热门标签失败：{}", e.getMessage());
+            return Result.error("获取热门标签失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "搜索标签", description = "根据关键词搜索标签")
+    @GetMapping("/search")
+    public Result<List<Tag>> searchTags(
+            @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
+            @Parameter(description = "数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit) {
+        
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+
+        try {
+            List<Tag> tags = tagService.searchTags(keyword, userId, limit);
+            return Result.success(tags);
+        } catch (Exception e) {
+            log.error("搜索标签失败：{}", e.getMessage());
+            return Result.error("搜索标签失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "删除标签", description = "删除指定的标签")
+    @DeleteMapping("/{id}")
+    public Result<Object> deleteTag(
+            @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
+        
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+
+        try {
+            tagService.deleteTag(id, userId);
+            return Result.success("标签删除成功");
+        } catch (Exception e) {
+            log.error("标签删除失败：{}", e.getMessage());
+            return Result.error("标签删除失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "批量删除标签", description = "批量删除多个标签")
+    @DeleteMapping("/batch")
+    public Result<Object> deleteTags(@Valid @RequestBody BatchDeleteRequest request) {
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+
+        try {
+            tagService.deleteTags(request.getTagIds(), userId);
+            return Result.success("批量删除成功");
+        } catch (Exception e) {
+            log.error("批量删除标签失败：{}", e.getMessage());
+            return Result.error("批量删除标签失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "获取标签使用统计", description = "获取标签的使用次数统计")
+    @GetMapping("/{id}/usage")
+    public Result<Map<String, Object>> getTagUsage(
+            @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
+        
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+
+        try {
+            Long usageCount = tagService.getTagUsageCount(id);
+            Map<String, Object> result = Map.of(
+                    "tagId", id,
+                    "usageCount", usageCount
+            );
+            return Result.success(result);
+        } catch (Exception e) {
+            log.error("获取标签使用统计失败：{}", e.getMessage());
+            return Result.error("获取标签使用统计失败：" + e.getMessage());
+        }
+    }
+
+    @Operation(summary = "获取标签统计", description = "获取用户标签统计信息")
+    @GetMapping("/statistics")
+    public Result<Map<String, Object>> getTagStatistics() {
+        Long userId = UserContext.getCurrentUserId();
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
+
+        try {
+            // 这里可以实现标签统计功能
+            // 暂时返回基本统计
+            Map<String, Object> statistics = Map.of(
+                    "totalTags", 0,
+                    "publicTags", 0,
+                    "privateTags", 0
+            );
+            return Result.success(statistics);
+        } catch (Exception e) {
+            log.error("获取标签统计失败：{}", e.getMessage());
+            return Result.error("获取标签统计失败：" + e.getMessage());
+        }
+    }
+
+    // ==================== 请求DTO类 ====================
+
+    /**
+     * 创建标签请求
+     */
+    public static class CreateTagRequest {
+        @NotBlank(message = "标签名称不能为空")
+        private String name;
+        
+        private String description;
+        
+        // Getters and Setters
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+    }
+
+    /**
+     * 更新标签请求
+     */
+    public static class UpdateTagRequest {
+        @NotBlank(message = "标签名称不能为空")
+        private String name;
+        
+        private String description;
+        
+        // Getters and Setters
+        public String getName() { return name; }
+        public void setName(String name) { this.name = name; }
+        public String getDescription() { return description; }
+        public void setDescription(String description) { this.description = description; }
+    }
+
+    /**
+     * 批量删除请求
+     */
+    public static class BatchDeleteRequest {
+        @NotNull(message = "标签ID列表不能为空")
+        private List<Long> tagIds;
+        
+        // Getters and Setters
+        public List<Long> getTagIds() { return tagIds; }
+        public void setTagIds(List<Long> tagIds) { this.tagIds = tagIds; }
+    }
+}

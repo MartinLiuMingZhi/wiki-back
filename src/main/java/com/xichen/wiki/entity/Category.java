@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 分类实体类
@@ -62,6 +63,12 @@ public class Category {
     @TableLogic
     @TableField("deleted")
     private Integer deleted;
+
+    /**
+     * 子分类列表（非数据库字段）
+     */
+    @TableField(exist = false)
+    private List<Category> children;
 }
 
 

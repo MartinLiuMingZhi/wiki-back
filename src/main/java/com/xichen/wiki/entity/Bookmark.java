@@ -33,7 +33,7 @@ public class Bookmark {
     private Integer pageNumber;
 
     /**
-     * 书签备注
+     * 备注
      */
     @TableField("note")
     private String note;
@@ -63,4 +63,3 @@ public class Bookmark {
     @TableField("deleted")
     private Integer deleted;
 }
-

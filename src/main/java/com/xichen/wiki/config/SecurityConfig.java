@@ -1,7 +1,7 @@
 package com.xichen.wiki.config;
 
 import com.xichen.wiki.security.JwtAuthenticationEntryPoint;
-import com.xichen.wiki.security.JwtAuthenticationFilter;
+import com.xichen.wiki.config.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

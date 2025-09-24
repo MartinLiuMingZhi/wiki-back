@@ -1,6 +1,6 @@
 package com.xichen.wiki.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.alibaba.fastjson2.JSON;
 import com.xichen.wiki.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
@@ -28,8 +28,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         
         Result<Void> result = Result.error(401, "未授权访问");
-        ObjectMapper mapper = new ObjectMapper();
-        response.getWriter().write(mapper.writeValueAsString(result));
+        response.getWriter().write(JSON.toJSONString(result));
     }
 }
 

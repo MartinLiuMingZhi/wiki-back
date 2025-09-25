@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>验证码邮件</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .email-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .email-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .email-header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .email-body {
+            padding: 40px 30px;
+        }
+        
+        .verification-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .verification-title {
+            font-size: 24px;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .verification-description {
+            font-size: 16px;
+            color: #7f8c8d;
+            margin-bottom: 30px;
+            line-height: 1.8;
+        }
+        
+        .verification-code {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 32px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            padding: 20px 40px;
+            border-radius: 12px;
+            display: inline-block;
+            margin: 20px 0;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            font-family: 'Courier New', monospace;
+        }
+        
+        .verification-info {
+            background-color: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 30px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .verification-info h3 {
+            color: #2c3e50;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        
+        .verification-info ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .verification-info li {
+            color: #7f8c8d;
+            margin-bottom: 8px;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .verification-info li:before {
+            content: "•";
+            color: #667eea;
+            font-weight: bold;
+            position: absolute;
+            left: 0;
+        }
+        
+        .security-tips {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        
+        .security-tips h3 {
+            color: #856404;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .security-tips p {
+            color: #856404;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        .email-footer {
+            background-color: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .email-footer p {
+            color: #6c757d;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .email-footer .company-info {
+            color: #495057;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .divider {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #e9ecef, transparent);
+            margin: 20px 0;
+        }
+        
+        @media (max-width: 600px) {
+            .email-container {
+                margin: 10px;
+                border-radius: 8px;
+            }
+            
+            .email-header, .email-body, .email-footer {
+                padding: 20px;
+            }
+            
+            .verification-code {
+                font-size: 24px;
+                letter-spacing: 4px;
+                padding: 15px 30px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- 邮件头部 -->
+        <div class="email-header">
+            <h1>🔐 验证码邮件</h1>
+            <p>Wiki知识管理系统</p>
+        </div>
+        
+        <!-- 邮件主体 -->
+        <div class="email-body">
+            <div class="verification-section">
+                <h2 class="verification-title">您的验证码</h2>
+                <p class="verification-description">
+                    您正在进行{type}操作，请使用以下验证码完成验证：
+                </p>
+                <div class="verification-code">{code}</div>
+            </div>
+            
+            <div class="verification-info">
+                <h3>📋 验证码信息</h3>
+                <ul>
+                    <li>验证码有效期：{expireMinutes}分钟</li>
+                    <li>验证码类型：{type}</li>
+                    <li>接收邮箱：{email}</li>
+                    <li>发送时间：{sendTime}</li>
+                </ul>
+            </div>
+            
+            <div class="security-tips">
+                <h3>🛡️ 安全提示</h3>
+                <p>请勿将验证码告知他人，如非本人操作，请忽略此邮件。</p>
+            </div>
+        </div>
+        
+        <div class="divider"></div>
+        
+        <!-- 邮件底部 -->
+        <div class="email-footer">
+            <p class="company-info">Wiki知识管理系统</p>
+            <p>让知识管理更简单、更高效</p>
+            <p>如有疑问，请联系系统管理员</p>
+        </div>
+    </div>
+</body>
+</html>

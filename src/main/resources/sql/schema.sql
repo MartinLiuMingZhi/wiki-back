@@ -1,7 +1,16 @@
+-- ============================================
+-- Wiki 数据库表结构定义
+-- 包含：数据库创建、所有表结构
+-- ============================================
+
 -- 创建数据库
 CREATE DATABASE IF NOT EXISTS wiki CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 USE wiki;
+
+-- ============================================
+-- 1. 用户相关表
+-- ============================================
 
 -- 用户表
 CREATE TABLE IF NOT EXISTS users (
@@ -38,6 +47,24 @@ CREATE TABLE IF NOT EXISTS user_roles (
     FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户角色关联表';
 
+-- 验证码表
+CREATE TABLE IF NOT EXISTS verification_codes (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    email VARCHAR(255) NOT NULL COMMENT '邮箱地址',
+    code VARCHAR(10) NOT NULL COMMENT '验证码',
+    type VARCHAR(20) NOT NULL COMMENT '验证码类型：register, login, reset_password',
+    used BOOLEAN DEFAULT FALSE COMMENT '是否已使用',
+    expire_time DATETIME NOT NULL COMMENT '过期时间',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_email_type (email, type),
+    INDEX idx_expire_time (expire_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='验证码表';
+
+-- ============================================
+-- 2. 分类和标签表
+-- ============================================
+
 -- 分类表
 CREATE TABLE IF NOT EXISTS categories (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -66,6 +93,10 @@ CREATE TABLE IF NOT EXISTS tags (
     UNIQUE KEY uk_name_user (name, user_id),
     INDEX idx_user_id (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='标签表';
+
+-- ============================================
+-- 3. 文档相关表
+-- ============================================
 
 -- 文档表
 CREATE TABLE IF NOT EXISTS documents (
@@ -111,6 +142,10 @@ CREATE TABLE IF NOT EXISTS document_tags (
     FOREIGN KEY (document_id) REFERENCES documents(id) ON DELETE CASCADE,
     FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='文档标签关联表';
+
+-- ============================================
+-- 4. 电子书相关表
+-- ============================================
 
 -- 电子书表
 CREATE TABLE IF NOT EXISTS ebooks (
@@ -172,6 +207,10 @@ CREATE TABLE IF NOT EXISTS bookmarks (
     INDEX idx_page_number (page_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='书签表';
 
+-- ============================================
+-- 5. 用户活动表
+-- ============================================
+
 -- 用户活动表
 CREATE TABLE IF NOT EXISTS user_activity (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -187,3 +226,6 @@ CREATE TABLE IF NOT EXISTS user_activity (
     INDEX idx_activity_time (activity_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户活动表';
 
+-- ============================================
+-- 表结构创建完成
+-- ============================================

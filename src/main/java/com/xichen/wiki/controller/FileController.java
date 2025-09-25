@@ -5,8 +5,8 @@ import com.xichen.wiki.service.FileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -31,12 +31,12 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/files")
-@RequiredArgsConstructor
 @Validated
 @Tag(name = "文件管理", description = "文件上传下载相关接口")
 public class FileController {
 
-    private final FileService fileService;
+    @Autowired
+    private FileService fileService;
 
     @Operation(summary = "上传文件", description = "上传文件到服务器")
     @PostMapping("/upload")
@@ -49,7 +49,7 @@ public class FileController {
         Long userId = 1L; // TODO: 从JWT token中解析用户ID
         
         Map<String, Object> result = fileService.uploadFile(file, folder, userId);
-        return Result.success("上传成功", result);
+        return Result.success(result);
     }
 
     @Operation(summary = "生成上传URL", description = "生成预签名上传URL")

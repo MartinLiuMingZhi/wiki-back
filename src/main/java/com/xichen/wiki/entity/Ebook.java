@@ -79,6 +79,12 @@ public class Ebook {
      */
     @TableField("category_id")
     private Long categoryId;
+    
+    /**
+     * 分类名称
+     */
+    @TableField("category")
+    private String category;
 
     /**
      * 是否公开
@@ -121,6 +127,12 @@ public class Ebook {
      */
     @TableField("last_read_page")
     private Integer lastReadPage;
+    
+    /**
+     * 总页数
+     */
+    @TableField("total_pages")
+    private Integer totalPages;
 
     /**
      * 创建时间
@@ -140,5 +152,32 @@ public class Ebook {
     @TableLogic
     @TableField("deleted")
     private Integer deleted;
+
+    /**
+     * 获取总页数
+     */
+    public Integer getTotalPages() {
+        return pageCount != null ? pageCount : 0;
+    }
+
+    /**
+     * 获取当前页数
+     */
+    public Integer getCurrentPage() {
+        return lastReadPage != null ? lastReadPage : 0;
+    }
+
+    /**
+     * 获取阅读进度百分比
+     */
+    public Double getReadingProgress() {
+        if (pageCount == null || pageCount == 0) {
+            return 0.0;
+        }
+        if (lastReadPage == null) {
+            return 0.0;
+        }
+        return Math.min(100.0, (double) lastReadPage / pageCount * 100);
+    }
 }
 

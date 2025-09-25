@@ -7,7 +7,6 @@ import com.xichen.wiki.entity.Bookmark;
 import com.xichen.wiki.exception.BusinessException;
 import com.xichen.wiki.mapper.BookmarkMapper;
 import com.xichen.wiki.service.BookmarkService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -18,29 +17,27 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class BookmarkServiceImpl extends ServiceImpl<BookmarkMapper, Bookmark> implements BookmarkService {
 
     @Override
     public Bookmark createBookmark(Long userId, Long ebookId, Integer pageNumber, String note) {
-        // 检查是否已存在相同页数的书签
+        // 检查是否已存在书签
         LambdaQueryWrapper<Bookmark> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Bookmark::getEbookId, ebookId)
-                .eq(Bookmark::getPageNumber, pageNumber)
                 .eq(Bookmark::getUserId, userId);
         
         if (count(wrapper) > 0) {
-            throw new BusinessException("该页面已存在书签");
+            throw new BusinessException("该电子书已存在书签");
         }
         
         Bookmark bookmark = new Bookmark();
         bookmark.setEbookId(ebookId);
+        bookmark.setUserId(userId);
         bookmark.setPageNumber(pageNumber);
         bookmark.setNote(note);
-        bookmark.setUserId(userId);
         
         save(bookmark);
-        log.info("书签创建成功：电子书ID={}, 页码={}", ebookId, pageNumber);
+        log.info("书签创建成功：电子书ID={}", ebookId);
         return bookmark;
     }
 
@@ -88,7 +85,7 @@ public class BookmarkServiceImpl extends ServiceImpl<BookmarkMapper, Bookmark> i
     }
 
     @Override
-    public void deleteBookmark(Long bookmarkId, Long userId) {
+    public boolean deleteBookmark(Long bookmarkId, Long userId) {
         Bookmark bookmark = getById(bookmarkId);
         if (bookmark == null) {
             throw new BusinessException("书签不存在");
@@ -100,6 +97,7 @@ public class BookmarkServiceImpl extends ServiceImpl<BookmarkMapper, Bookmark> i
         
         removeById(bookmarkId);
         log.info("书签删除成功：ID={}", bookmarkId);
+        return true;
     }
 
     @Override
@@ -128,5 +126,38 @@ public class BookmarkServiceImpl extends ServiceImpl<BookmarkMapper, Bookmark> i
         
         remove(wrapper);
         log.info("批量删除书签成功：数量={}", bookmarkIds.size());
+    }
+
+    @Override
+    public boolean isBookmarked(Long userId, Long documentId) {
+        LambdaQueryWrapper<Bookmark> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Bookmark::getUserId, userId)
+                .eq(Bookmark::getEbookId, documentId);
+        return count(wrapper) > 0;
+    }
+
+    @Override
+    public com.baomidou.mybatisplus.extension.plugins.pagination.Page<Bookmark> getUserBookmarks(Long userId, Integer page, Integer size) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Bookmark> pageParam = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+        LambdaQueryWrapper<Bookmark> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Bookmark::getUserId, userId)
+                .orderByDesc(Bookmark::getCreatedAt);
+        
+        return page(pageParam, wrapper);
+    }
+
+    @Override
+    public boolean batchDeleteBookmarks(Long userId, Long[] bookmarkIds) {
+        if (bookmarkIds == null || bookmarkIds.length == 0) {
+            return false;
+        }
+        
+        LambdaQueryWrapper<Bookmark> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(Bookmark::getId, bookmarkIds)
+                .eq(Bookmark::getUserId, userId);
+        
+        remove(wrapper);
+        log.info("批量删除书签成功：数量={}", bookmarkIds.length);
+        return true;
     }
 }

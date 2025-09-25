@@ -4,8 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.xichen.wiki.entity.*;
 import com.xichen.wiki.mapper.*;
 import com.xichen.wiki.service.StatisticsService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -19,14 +19,25 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class StatisticsServiceImpl implements StatisticsService {
 
-    private final DocumentMapper documentMapper;
-    private final EbookMapper ebookMapper;
-    private final CategoryMapper categoryMapper;
-    private final BookmarkMapper bookmarkMapper;
-    private final UserActivityMapper userActivityMapper;
+    @Autowired
+    private DocumentMapper documentMapper;
+    
+    @Autowired
+    private EbookMapper ebookMapper;
+    
+    @Autowired
+    private CategoryMapper categoryMapper;
+    
+    @Autowired
+    private BookmarkMapper bookmarkMapper;
+    
+    @Autowired
+    private UserActivityMapper userActivityMapper;
+    
+    @Autowired
+    private TagMapper tagMapper;
 
     @Override
     public Map<String, Object> getUserStatistics(Long userId) {
@@ -91,7 +102,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         return statistics;
     }
 
-    @Override
     public Map<String, Object> getEbookStatistics(Long userId) {
         Map<String, Object> statistics = new HashMap<>();
         
@@ -130,7 +140,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         return statistics;
     }
 
-    @Override
     public Map<String, Object> getReadingStatistics(Long userId, LocalDateTime startDate, LocalDateTime endDate) {
         Map<String, Object> statistics = new HashMap<>();
         
@@ -190,7 +199,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         return statistics;
     }
 
-    @Override
     public Map<String, Object> getStorageStatistics(Long userId) {
         Map<String, Object> statistics = new HashMap<>();
         
@@ -211,7 +219,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         return statistics;
     }
 
-    @Override
     public Map<String, Object> getActivityStatistics(Long userId, LocalDateTime startDate, LocalDateTime endDate) {
         Map<String, Object> statistics = new HashMap<>();
         
@@ -248,5 +255,27 @@ public class StatisticsServiceImpl implements StatisticsService {
         if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
         if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
         return String.format("%.1f GB", bytes / (1024.0 * 1024.0 * 1024.0));
+    }
+    
+    @Override
+    public Map<String, Object> getTagStatistics(Long userId) {
+        Map<String, Object> statistics = new HashMap<>();
+        
+        // 获取用户标签总数
+        LambdaQueryWrapper<Tag> tagWrapper = new LambdaQueryWrapper<>();
+        tagWrapper.eq(Tag::getUserId, userId);
+        long totalTags = tagMapper.selectCount(tagWrapper);
+        
+        // 获取最常用的标签（简化实现）
+        List<Tag> popularTags = tagMapper.selectList(tagWrapper);
+        
+        // 获取标签使用统计（简化实现）
+        List<Tag> tagUsageStats = tagMapper.selectList(tagWrapper);
+        
+        statistics.put("totalTags", totalTags);
+        statistics.put("popularTags", popularTags);
+        statistics.put("tagUsageStats", tagUsageStats);
+        
+        return statistics;
     }
 }

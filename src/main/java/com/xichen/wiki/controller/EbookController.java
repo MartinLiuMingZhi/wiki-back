@@ -8,8 +8,9 @@ import com.xichen.wiki.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -26,12 +27,12 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/ebooks")
-@RequiredArgsConstructor
 @Validated
 @Tag(name = "电子书管理", description = "电子书上传、管理、阅读相关接口")
 public class EbookController {
 
-    private final EbookService ebookService;
+    @Autowired
+    private EbookService ebookService;
 
     @Operation(summary = "上传电子书", description = "上传PDF电子书文件")
     @PostMapping("/upload")
@@ -48,7 +49,7 @@ public class EbookController {
         }
 
         try {
-            Ebook ebook = ebookService.uploadEbook(userId, file, title, author, description, categoryId);
+            Ebook ebook = ebookService.uploadEbook(userId, file, title, description, author, "未分类", categoryId);
             return Result.success("电子书上传成功", ebook);
         } catch (Exception e) {
             log.error("电子书上传失败：{}", e.getMessage());
@@ -69,7 +70,7 @@ public class EbookController {
             return Result.error(401, "用户未登录");
         }
 
-        Page<Ebook> ebooks = ebookService.getUserEbooks(userId, page, size, categoryId, keyword);
+        Page<Ebook> ebooks = ebookService.getUserEbooks(userId, page, size, keyword);
         return Result.success(ebooks);
     }
 

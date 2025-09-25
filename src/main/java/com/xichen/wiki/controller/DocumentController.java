@@ -7,8 +7,8 @@ import com.xichen.wiki.service.DocumentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -24,12 +24,12 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/documents")
-@RequiredArgsConstructor
 @Validated
 @Tag(name = "文档管理", description = "文档CRUD操作相关接口")
 public class DocumentController {
 
-    private final DocumentService documentService;
+    @Autowired
+    private DocumentService documentService;
 
     @Operation(summary = "创建文档", description = "创建新的文档")
     @PostMapping
@@ -44,7 +44,8 @@ public class DocumentController {
                 userId,
                 request.getTitle(),
                 request.getContent(),
-                request.getCategoryId()
+                request.getCategoryId(),
+                null // TODO: 添加tagIds支持
         );
         
         return Result.success("创建成功", document);
@@ -62,7 +63,7 @@ public class DocumentController {
         // 这里应该从token中解析用户ID，暂时使用固定值
         Long userId = 1L; // TODO: 从JWT token中解析用户ID
         
-        Page<Document> documents = documentService.getUserDocuments(userId, page, size, categoryId, keyword);
+        Page<Document> documents = documentService.getUserDocuments(userId, page, size, keyword);
         return Result.success(documents);
     }
 
@@ -94,7 +95,8 @@ public class DocumentController {
                 userId,
                 request.getTitle(),
                 request.getContent(),
-                request.getCategoryId()
+                request.getCategoryId(),
+                null // TODO: 添加tagIds支持
         );
         
         return Result.success("更新成功", document);

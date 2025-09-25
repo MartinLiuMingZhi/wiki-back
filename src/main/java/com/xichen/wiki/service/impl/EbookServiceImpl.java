@@ -8,9 +8,9 @@ import com.xichen.wiki.exception.BusinessException;
 import com.xichen.wiki.mapper.EbookMapper;
 import com.xichen.wiki.service.EbookService;
 import com.xichen.wiki.service.FileService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,67 +18,53 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * 电子书服务实现类
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements EbookService {
 
-    private final FileService fileService;
-    private final RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private FileService fileService;
+    
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     private static final String EBOOK_FAVORITE_KEY = "ebook:favorite:"; // userId -> Set<ebookId>
     private static final String EBOOK_READING_PROGRESS_KEY = "ebook:reading_progress:"; // userId:ebookId -> progress
     private static final String EBOOK_VIEW_COUNT_KEY = "ebook:view_count:";
 
     @Override
-    @Transactional
-    public Ebook uploadEbook(Long userId, MultipartFile file, String title, String author, 
-                           String description, Long categoryId) {
-        try {
-            // 上传文件
-            Map<String, Object> uploadResult = fileService.uploadFile(file, "ebooks", userId);
-            String fileKey = (String) uploadResult.get("fileKey");
-            String fileUrl = (String) uploadResult.get("url");
-            Long fileSize = (Long) uploadResult.get("fileSize");
-
-            // 创建电子书记录
-            Ebook ebook = new Ebook();
-            ebook.setTitle(title);
-            ebook.setAuthor(author);
-            ebook.setDescription(description);
-            ebook.setUserId(userId);
-            ebook.setCategoryId(categoryId);
-            ebook.setFileKey(fileKey);
-            ebook.setFileUrl(fileUrl);
-            ebook.setFileSize(fileSize);
-            ebook.setIsFavorite(false);
-            ebook.setDownloadCount(0);
-            ebook.setViewCount(0);
-            ebook.setLastReadPage(0);
-            ebook.setCreatedAt(LocalDateTime.now());
-            ebook.setUpdatedAt(LocalDateTime.now());
-
-            save(ebook);
-            log.info("电子书上传成功：用户ID={}, 标题={}", userId, title);
-            return ebook;
-
-        } catch (Exception e) {
-            log.error("电子书上传失败：{}", e.getMessage());
-            throw new BusinessException("电子书上传失败：" + e.getMessage());
-        }
+    public Ebook createEbook(Long userId, String title, String description, String coverUrl) {
+        Ebook ebook = new Ebook();
+        ebook.setTitle(title);
+        ebook.setDescription(description);
+        ebook.setCoverKey(coverUrl);
+        ebook.setUserId(userId);
+        ebook.setIsFavorite(false);
+        ebook.setDownloadCount(0);
+        ebook.setViewCount(0);
+        ebook.setLastReadPage(0);
+        ebook.setCreatedAt(LocalDateTime.now());
+        ebook.setUpdatedAt(LocalDateTime.now());
+        
+        save(ebook);
+        log.info("电子书创建成功：用户ID={}, 标题={}", userId, title);
+        return ebook;
     }
+
 
     @Override
     @Transactional
-    public Ebook updateEbook(Long ebookId, Long userId, String title, String author, 
-                           String description, Long categoryId) {
+    public Ebook updateEbook(Long ebookId, Long userId, String title, String description, String coverUrl, Long categoryId) {
         Ebook ebook = getById(ebookId);
         if (ebook == null) {
             throw new BusinessException("电子书不存在");
@@ -89,9 +75,8 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
         }
 
         ebook.setTitle(title);
-        ebook.setAuthor(author);
         ebook.setDescription(description);
-        ebook.setCategoryId(categoryId);
+        ebook.setCoverKey(coverUrl);
         ebook.setUpdatedAt(LocalDateTime.now());
 
         updateById(ebook);
@@ -100,14 +85,12 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
     }
 
     @Override
-    public Page<Ebook> getUserEbooks(Long userId, Integer page, Integer size, Long categoryId, String keyword) {
+    public Page<Ebook> getUserEbooks(Long userId, Integer page, Integer size, String keyword) {
         Page<Ebook> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Ebook> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Ebook::getUserId, userId);
         
-        if (categoryId != null) {
-            wrapper.eq(Ebook::getCategoryId, categoryId);
-        }
+        // 移除categoryId过滤，因为接口中没有这个参数
         
         if (StringUtils.isNotBlank(keyword)) {
             wrapper.and(w -> w.like(Ebook::getTitle, keyword)
@@ -139,7 +122,7 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
 
     @Override
     @Transactional
-    public void deleteEbook(Long ebookId, Long userId) {
+    public boolean deleteEbook(Long ebookId, Long userId) {
         Ebook ebook = getById(ebookId);
         if (ebook == null) {
             throw new BusinessException("电子书不存在");
@@ -164,105 +147,35 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
         redisTemplate.delete(EBOOK_READING_PROGRESS_KEY + userId + ":" + ebookId);
         
         log.info("电子书删除成功：ID={}, 用户ID={}", ebookId, userId);
+        return true;
     }
 
     @Override
-    public void favoriteEbook(Long ebookId, Long userId) {
+    public boolean updateReadingProgress(Long userId, Long ebookId, Integer currentPage, Integer totalPages) {
         Ebook ebook = getById(ebookId);
         if (ebook == null) {
             throw new BusinessException("电子书不存在");
         }
-
-        String key = EBOOK_FAVORITE_KEY + userId;
-        redisTemplate.opsForSet().add(key, ebookId);
         
-        // 更新数据库
-        ebook.setIsFavorite(true);
+        if (!ebook.getUserId().equals(userId)) {
+            throw new BusinessException("无权限操作此电子书");
+        }
+        
+        ebook.setLastReadPage(currentPage);
+        ebook.setLastReadDate(LocalDateTime.now());
         updateById(ebook);
         
-        log.info("电子书收藏成功：用户ID={}, 电子书ID={}", userId, ebookId);
-    }
-
-    @Override
-    public void unfavoriteEbook(Long ebookId, Long userId) {
-        String key = EBOOK_FAVORITE_KEY + userId;
-        redisTemplate.opsForSet().remove(key, ebookId);
-        
-        // 更新数据库
-        Ebook ebook = getById(ebookId);
-        if (ebook != null) {
-            ebook.setIsFavorite(false);
-            updateById(ebook);
-        }
-        
-        log.info("电子书取消收藏成功：用户ID={}, 电子书ID={}", userId, ebookId);
-    }
-
-    @Override
-    public Page<Ebook> getFavoriteEbooks(Long userId, Integer page, Integer size) {
-        String key = EBOOK_FAVORITE_KEY + userId;
-        // 获取收藏的电子书ID列表
-        java.util.Set<Object> ebookIds = redisTemplate.opsForSet().members(key);
-        
-        if (ebookIds == null || ebookIds.isEmpty()) {
-            return new Page<>(page, size);
-        }
-
-        Page<Ebook> pageParam = new Page<>(page, size);
-        LambdaQueryWrapper<Ebook> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(Ebook::getId, ebookIds)
-               .eq(Ebook::getIsFavorite, true)
-               .orderByDesc(Ebook::getUpdatedAt);
-        
-        return page(pageParam, wrapper);
-    }
-
-    @Override
-    public void updateReadingProgress(Long ebookId, Long userId, Integer progress, Integer pageNumber) {
+        // 更新Redis缓存
         String key = EBOOK_READING_PROGRESS_KEY + userId + ":" + ebookId;
-        
         Map<String, Object> progressData = new HashMap<>();
-        progressData.put("progress", progress);
-        progressData.put("pageNumber", pageNumber);
-        progressData.put("lastReadTime", LocalDateTime.now());
+        progressData.put("currentPage", currentPage);
+        progressData.put("totalPages", totalPages);
+        redisTemplate.opsForValue().set(key, progressData, 30, TimeUnit.DAYS);
         
-        redisTemplate.opsForHash().putAll(key, progressData);
-        redisTemplate.expire(key, 30, TimeUnit.DAYS); // 30天过期
-        
-        // 更新数据库
-        Ebook ebook = getById(ebookId);
-        if (ebook != null) {
-            ebook.setLastReadPage(pageNumber);
-            ebook.setUpdatedAt(LocalDateTime.now());
-            updateById(ebook);
-        }
-        
-        log.info("阅读进度更新成功：用户ID={}, 电子书ID={}, 进度={}%, 页码={}", 
-                userId, ebookId, progress, pageNumber);
+        log.info("阅读进度更新成功：用户ID={}, 电子书ID={}, 当前页={}, 总页数={}", userId, ebookId, currentPage, totalPages);
+        return true;
     }
 
-    @Override
-    public Map<String, Object> getReadingProgress(Long ebookId, Long userId) {
-        String key = EBOOK_READING_PROGRESS_KEY + userId + ":" + ebookId;
-        Map<Object, Object> progressData = redisTemplate.opsForHash().entries(key);
-        
-        Map<String, Object> result = new HashMap<>();
-        if (!progressData.isEmpty()) {
-            result.put("progress", progressData.get("progress"));
-            result.put("pageNumber", progressData.get("pageNumber"));
-            result.put("lastReadTime", progressData.get("lastReadTime"));
-        } else {
-            // 从数据库获取
-            Ebook ebook = getById(ebookId);
-            if (ebook != null) {
-                result.put("progress", 0);
-                result.put("pageNumber", ebook.getLastReadPage());
-                result.put("lastReadTime", ebook.getUpdatedAt());
-            }
-        }
-        
-        return result;
-    }
 
     @Override
     public Page<Ebook> searchEbooks(String keyword, Long userId, Integer page, Integer size) {
@@ -281,7 +194,6 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
         return page(pageParam, wrapper);
     }
 
-    @Override
     public void incrementViewCount(Long ebookId) {
         String key = EBOOK_VIEW_COUNT_KEY + ebookId;
         redisTemplate.opsForValue().increment(key, 1);
@@ -292,7 +204,6 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
         log.debug("电子书查看次数增加：ID={}", ebookId);
     }
 
-    @Override
     public Page<Ebook> getPopularEbooks(Integer page, Integer size) {
         Page<Ebook> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Ebook> wrapper = new LambdaQueryWrapper<>();
@@ -301,7 +212,6 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
         return page(pageParam, wrapper);
     }
 
-    @Override
     public Page<Ebook> getRecentReadEbooks(Long userId, Integer page, Integer size) {
         Page<Ebook> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Ebook> wrapper = new LambdaQueryWrapper<>();
@@ -309,5 +219,149 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
                .gt(Ebook::getLastReadPage, 0) // 有阅读记录的
                .orderByDesc(Ebook::getUpdatedAt);
         return page(pageParam, wrapper);
+    }
+    
+    @Override
+    public boolean toggleFavorite(Long ebookId, Long userId) {
+        Ebook ebook = getById(ebookId);
+        if (ebook == null) {
+            throw new BusinessException("电子书不存在");
+        }
+        
+        if (!ebook.getUserId().equals(userId)) {
+            throw new BusinessException("无权限操作此电子书");
+        }
+        
+        ebook.setIsFavorite(!ebook.getIsFavorite());
+        updateById(ebook);
+        log.info("电子书收藏状态切换成功：{}", ebook.getTitle());
+        return ebook.getIsFavorite();
+    }
+    
+    @Override
+    public Ebook getEbookById(Long ebookId, Long userId) {
+        Ebook ebook = getById(ebookId);
+        if (ebook == null) {
+            throw new BusinessException("电子书不存在");
+        }
+        
+        if (!ebook.getUserId().equals(userId)) {
+            throw new BusinessException("无权限查看此电子书");
+        }
+        
+        return ebook;
+    }
+    
+    @Override
+    public Map<String, Object> getEbookStatistics(Long ebookId, Long userId) {
+        Ebook ebook = getById(ebookId);
+        if (ebook == null) {
+            throw new BusinessException("电子书不存在");
+        }
+        
+        if (!ebook.getUserId().equals(userId)) {
+            throw new BusinessException("无权限查看此电子书");
+        }
+        
+        Map<String, Object> statistics = new HashMap<>();
+        statistics.put("totalPages", ebook.getTotalPages());
+        statistics.put("currentPage", ebook.getCurrentPage());
+        statistics.put("readingProgress", ebook.getReadingProgress());
+        statistics.put("isFavorite", ebook.getIsFavorite());
+        statistics.put("createdAt", ebook.getCreatedAt());
+        statistics.put("updatedAt", ebook.getUpdatedAt());
+        
+        return statistics;
+    }
+    
+    @Override
+    public Ebook uploadEbook(Long userId, MultipartFile file, String title, String description, String author, String category, Long categoryId) {
+        // 上传文件
+        Map<String, Object> uploadResult = fileService.uploadFile(file, "ebooks", userId);
+        String fileKey = (String) uploadResult.get("key");
+        String fileUrl = (String) uploadResult.get("url");
+        
+        // 创建电子书记录
+        Ebook ebook = new Ebook();
+        ebook.setTitle(title);
+        ebook.setDescription(description);
+        ebook.setAuthor(author);
+        ebook.setCategory(category);
+        ebook.setCategoryId(categoryId);
+        ebook.setFileKey(fileKey);
+        ebook.setFileUrl(fileUrl);
+        ebook.setUserId(userId);
+        ebook.setIsPublic(false);
+        ebook.setIsFavorite(false);
+        ebook.setDownloadCount(0);
+        ebook.setViewCount(0);
+        ebook.setLastReadPage(0);
+        ebook.setTotalPages(0);
+        ebook.setCreatedAt(LocalDateTime.now());
+        ebook.setUpdatedAt(LocalDateTime.now());
+        
+        save(ebook);
+        log.info("电子书上传成功：ID={}, 用户ID={}, 标题={}", ebook.getId(), userId, title);
+        return ebook;
+    }
+    
+    @Override
+    public Map<String, Object> getReadingProgress(Long userId, Long ebookId) {
+        String key = EBOOK_READING_PROGRESS_KEY + userId + ":" + ebookId;
+        Object progressData = redisTemplate.opsForValue().get(key);
+        
+        if (progressData == null) {
+            Map<String, Object> defaultProgress = new HashMap<>();
+            defaultProgress.put("currentPage", 0);
+            defaultProgress.put("totalPages", 0);
+            defaultProgress.put("progress", 0.0);
+            return defaultProgress;
+        }
+        
+        return (Map<String, Object>) progressData;
+    }
+    
+    @Override
+    public boolean favoriteEbook(Long userId, Long ebookId) {
+        Ebook ebook = getById(ebookId);
+        if (ebook == null) {
+            throw new BusinessException("电子书不存在");
+        }
+        
+        String key = EBOOK_FAVORITE_KEY + userId;
+        redisTemplate.opsForSet().add(key, ebookId);
+        redisTemplate.expire(key, 30, TimeUnit.DAYS);
+        
+        log.info("电子书收藏成功：用户ID={}, 电子书ID={}", userId, ebookId);
+        return true;
+    }
+    
+    @Override
+    public boolean unfavoriteEbook(Long userId, Long ebookId) {
+        String key = EBOOK_FAVORITE_KEY + userId;
+        redisTemplate.opsForSet().remove(key, ebookId);
+        
+        log.info("电子书取消收藏成功：用户ID={}, 电子书ID={}", userId, ebookId);
+        return true;
+    }
+    
+    @Override
+    public Page<Ebook> getFavoriteEbooks(Long userId, Integer page, Integer size) {
+        String key = EBOOK_FAVORITE_KEY + userId;
+        Set<Object> favoriteIds = redisTemplate.opsForSet().members(key);
+        
+        if (favoriteIds == null || favoriteIds.isEmpty()) {
+            return new Page<>(page, size);
+        }
+        
+        List<Long> ebookIds = favoriteIds.stream()
+                .map(id -> Long.valueOf(id.toString()))
+                .collect(Collectors.toList());
+        
+        LambdaQueryWrapper<Ebook> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(Ebook::getId, ebookIds)
+                .orderByDesc(Ebook::getUpdatedAt);
+        
+        return page(new Page<>(page, size), wrapper);
     }
 }

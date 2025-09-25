@@ -10,8 +10,8 @@ import com.xichen.wiki.mapper.UserMapper;
 import com.xichen.wiki.mapper.UserActivityMapper;
 import com.xichen.wiki.service.UserService;
 import com.xichen.wiki.util.JwtUtil;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -24,12 +24,16 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements UserService {
 
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
-    private final UserActivityMapper userActivityMapper;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
+    
+    @Autowired
+    private UserActivityMapper userActivityMapper;
 
     @Override
     public User register(String username, String email, String password) {
@@ -56,7 +60,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     @Override
-    public String login(String username, String password) {
+    public Map<String, Object> login(String username, String password) {
         User user = findByUsername(username);
         if (user == null) {
             throw new BusinessException("用户名或密码错误");
@@ -72,8 +76,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         
         // 生成JWT令牌
         String token = jwtUtil.generateToken(user.getId(), user.getUsername());
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", token);
+        result.put("user", user);
+        
         log.info("用户登录成功：{}", username);
-        return token;
+        return result;
     }
 
     @Override
@@ -90,8 +99,89 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return getOne(wrapper);
     }
 
+
     @Override
-    public User updateUserInfo(Long userId, String username, String email, String avatarUrl) {
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        
+        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
+            throw new BusinessException("原密码错误");
+        }
+        
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        updateById(user);
+        log.info("用户密码修改成功：{}", user.getUsername());
+    }
+
+
+    @Override
+    public User updateAvatar(Long userId, String avatarUrl) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        
+        user.setAvatarUrl(avatarUrl);
+        updateById(user);
+        log.info("用户头像更新成功：{}", user.getUsername());
+        return user;
+    }
+
+
+    @Override
+    public void recordUserActivity(Long userId, String activityType, String resourceType, Long resourceId) {
+        UserActivity activity = new UserActivity();
+        activity.setUserId(userId);
+        activity.setActivityType(activityType);
+        activity.setResourceType(resourceType);
+        activity.setResourceId(resourceId);
+        activity.setActivityTime(LocalDateTime.now());
+        
+        userActivityMapper.insert(activity);
+        log.info("用户活动记录成功：用户ID={}, 活动类型={}", userId, activityType);
+    }
+
+    @Override
+    public boolean isUsernameAvailable(String username) {
+        return findByUsername(username) == null;
+    }
+
+    @Override
+    public boolean isEmailAvailable(String email) {
+        return findByEmail(email) == null;
+    }
+    
+    @Override
+    public String generateToken(User user) {
+        return jwtUtil.generateToken(user.getId(), user.getUsername());
+    }
+
+    @Override
+    public void resetPassword(String email, String newPassword, String verificationCode) {
+        User user = findByEmail(email);
+        if (user == null) {
+            throw new BusinessException("邮箱不存在");
+        }
+        
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        updateById(user);
+        log.info("用户密码重置成功：{}", user.getUsername());
+    }
+
+    @Override
+    public User getUserProfile(Long userId) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        return user;
+    }
+
+    @Override
+    public User updateUserProfile(Long userId, String username, String email) {
         User user = getById(userId);
         if (user == null) {
             throw new BusinessException("用户不存在");
@@ -115,76 +205,13 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             user.setEmail(email);
         }
         
-        if (avatarUrl != null) {
-            user.setAvatarUrl(avatarUrl);
-        }
-        
         updateById(user);
-        log.info("用户信息更新成功：{}", user.getUsername());
+        log.info("用户资料更新成功：{}", user.getUsername());
         return user;
     }
 
     @Override
-    public void changePassword(Long userId, String oldPassword, String newPassword) {
-        User user = getById(userId);
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
-        
-        if (!passwordEncoder.matches(oldPassword, user.getPasswordHash())) {
-            throw new BusinessException("原密码错误");
-        }
-        
-        user.setPasswordHash(passwordEncoder.encode(newPassword));
-        updateById(user);
-        log.info("用户密码修改成功：{}", user.getUsername());
-    }
-
-    @Override
-    public void resetPassword(String email, String newPassword) {
-        User user = findByEmail(email);
-        if (user == null) {
-            throw new BusinessException("邮箱不存在");
-        }
-        
-        user.setPasswordHash(passwordEncoder.encode(newPassword));
-        updateById(user);
-        log.info("用户密码重置成功：{}", user.getUsername());
-    }
-
-    @Override
-    public User updateAvatar(Long userId, String avatarUrl) {
-        User user = getById(userId);
-        if (user == null) {
-            throw new BusinessException("用户不存在");
-        }
-        
-        user.setAvatarUrl(avatarUrl);
-        updateById(user);
-        log.info("用户头像更新成功：{}", user.getUsername());
-        return user;
-    }
-
-    @Override
-    public Map<String, Object> getUserStatistics(Long userId) {
-        Map<String, Object> statistics = new HashMap<>();
-        
-        // 这里可以添加更多统计信息
-        User user = getById(userId);
-        if (user != null) {
-            statistics.put("userId", user.getId());
-            statistics.put("username", user.getUsername());
-            statistics.put("email", user.getEmail());
-            statistics.put("status", user.getStatus());
-            statistics.put("createdAt", user.getCreatedAt());
-            statistics.put("updatedAt", user.getUpdatedAt());
-        }
-        
-        return statistics;
-    }
-
-    @Override
-    public Page<Map<String, Object>> getUserActivities(Long userId, Integer page, Integer size) {
+    public Page<Map<String, Object>> getUserActivityLogs(Long userId, Integer page, Integer size) {
         Page<UserActivity> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<UserActivity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(UserActivity::getUserId, userId)
@@ -199,28 +226,59 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         
         return result;
     }
-
+    
     @Override
-    public void recordUserActivity(Long userId, String activityType, String resourceType, Long resourceId) {
-        UserActivity activity = new UserActivity();
-        activity.setUserId(userId);
-        activity.setActivityType(activityType);
-        activity.setResourceType(resourceType);
-        activity.setResourceId(resourceId);
-        activity.setActivityTime(LocalDateTime.now());
+    public com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> getUserActivities(Long userId, Integer page, Integer size) {
+        // 这里应该实现获取用户活动的逻辑
+        // 暂时返回空的分页结果
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> result = 
+            new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+        result.setTotal(0);
+        result.setPages(0);
+        return result;
+    }
+    
+    @Override
+    public Map<String, Object> getUserStatistics(Long userId) {
+        Map<String, Object> statistics = new HashMap<>();
         
-        userActivityMapper.insert(activity);
-        log.info("用户活动记录成功：用户ID={}, 活动类型={}", userId, activityType);
+        // 获取用户基本信息
+        User user = getById(userId);
+        if (user != null) {
+            statistics.put("userId", user.getId());
+            statistics.put("username", user.getUsername());
+            statistics.put("email", user.getEmail());
+            statistics.put("status", user.getStatus());
+            statistics.put("createdAt", user.getCreatedAt());
+        }
+        
+        // 这里可以添加更多的统计信息
+        // 比如：文档数量、电子书数量、收藏数量等
+        
+        return statistics;
     }
-
+    
     @Override
-    public boolean isUsernameAvailable(String username) {
-        return findByUsername(username) == null;
-    }
-
-    @Override
-    public boolean isEmailAvailable(String email) {
-        return findByEmail(email) == null;
+    public User updateUserInfo(Long userId, String username, String email, String avatar) {
+        User user = getById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+        
+        // 更新用户信息
+        if (username != null && !username.trim().isEmpty()) {
+            user.setUsername(username);
+        }
+        if (email != null && !email.trim().isEmpty()) {
+            user.setEmail(email);
+        }
+        if (avatar != null && !avatar.trim().isEmpty()) {
+            user.setAvatarUrl(avatar);
+        }
+        
+        updateById(user);
+        log.info("用户信息更新成功：{}", user.getUsername());
+        return user;
     }
 }
 

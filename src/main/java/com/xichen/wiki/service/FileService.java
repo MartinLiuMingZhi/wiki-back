@@ -15,14 +15,14 @@ public interface FileService {
     Map<String, Object> uploadFile(MultipartFile file, String folder, Long userId);
     
     /**
-     * 生成文件下载URL
+     * 生成下载URL
      */
     String generateDownloadUrl(String fileKey, Long userId);
     
     /**
      * 删除文件
      */
-    void deleteFile(String fileKey, Long userId);
+    boolean deleteFile(String fileKey, Long userId);
     
     /**
      * 获取文件信息
@@ -37,15 +37,15 @@ public interface FileService {
     /**
      * 获取文件大小
      */
-    long getFileSize(String fileKey);
+    Long getFileSize(String fileKey);
     
     /**
-     * 生成预签名上传URL
+     * 生成上传URL
      */
-    Map<String, Object> generateUploadUrl(String fileName, String contentType, String folder, Long userId);
+    Map<String, Object> generateUploadUrl(String fileName, String fileType, String folder, Long userId);
     
     /**
-     * 确认文件上传完成
+     * 确认上传
      */
-    void confirmUpload(String fileKey, Long fileSize, Long userId);
+    String confirmUpload(String key, Long userId, Long fileSize);
 }

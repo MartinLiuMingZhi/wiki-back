@@ -7,14 +7,16 @@ import com.xichen.wiki.entity.Tag;
 import com.xichen.wiki.exception.BusinessException;
 import com.xichen.wiki.mapper.TagMapper;
 import com.xichen.wiki.service.TagService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -22,13 +24,12 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagService {
 
-    private final RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     private static final String TAG_USAGE_COUNT_KEY = "tag:usage_count:";
-    private static final String POPULAR_TAGS_KEY = "tag:popular";
 
     @Override
     public Tag createTag(Long userId, String name, String description) {
@@ -130,7 +131,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
     }
 
     @Override
-    public void deleteTag(Long tagId, Long userId) {
+    public boolean deleteTag(Long tagId, Long userId) {
         Tag tag = getById(tagId);
         if (tag == null) {
             throw new BusinessException("标签不存在");
@@ -151,10 +152,11 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
         redisTemplate.delete(TAG_USAGE_COUNT_KEY + tagId);
         
         log.info("标签删除成功：ID={}, 用户ID={}", tagId, userId);
+        return true;
     }
 
     @Override
-    public Tag getTagDetail(Long tagId, Long userId) {
+    public Map<String, Object> getTagDetail(Long tagId, Long userId) {
         Tag tag = getById(tagId);
         if (tag == null) {
             return null;
@@ -165,7 +167,15 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
             throw new BusinessException("无权限访问此标签");
         }
         
-        return tag;
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", tag.getId());
+        result.put("name", tag.getName());
+        result.put("description", tag.getDescription());
+        result.put("usageCount", tag.getUsageCount());
+        result.put("userId", tag.getUserId());
+        result.put("createdAt", tag.getCreatedAt());
+        result.put("updatedAt", tag.getUpdatedAt());
+        return result;
     }
 
     @Override
@@ -188,13 +198,13 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
     }
 
     @Override
-    public Long getTagUsageCount(Long tagId) {
+    public Integer getTagUsageCount(Long tagId) {
         // 先从Redis获取
         String key = TAG_USAGE_COUNT_KEY + tagId;
         Object count = redisTemplate.opsForValue().get(key);
         
         if (count != null) {
-            return Long.valueOf(count.toString());
+            return Integer.valueOf(count.toString());
         }
         
         // 从数据库获取
@@ -203,18 +213,19 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
             Long usageCount = tag.getUsageCount();
             // 缓存到Redis
             redisTemplate.opsForValue().set(key, usageCount, 1, TimeUnit.HOURS);
-            return usageCount;
+            return usageCount.intValue();
         }
         
-        return 0L;
+        return 0;
     }
 
     @Override
-    public void deleteTags(List<Long> tagIds, Long userId) {
+    public boolean deleteTags(List<Long> tagIds, Long userId) {
         for (Long tagId : tagIds) {
             deleteTag(tagId, userId);
         }
         log.info("批量删除标签成功：用户ID={}, 标签IDs={}", userId, tagIds);
+        return true;
     }
 
     /**

@@ -1,6 +1,5 @@
 package com.xichen.wiki.service;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xichen.wiki.entity.Ebook;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,21 +12,29 @@ import java.util.Map;
 public interface EbookService extends IService<Ebook> {
     
     /**
-     * 上传电子书
+     * 创建电子书
      */
-    Ebook uploadEbook(Long userId, MultipartFile file, String title, String author, 
-                     String description, Long categoryId);
+    Ebook createEbook(Long userId, String title, String description, String coverUrl);
     
     /**
-     * 更新电子书信息
+     * 更新电子书
      */
-    Ebook updateEbook(Long ebookId, Long userId, String title, String author, 
-                     String description, Long categoryId);
+    Ebook updateEbook(Long ebookId, Long userId, String title, String description, String coverUrl, Long categoryId);
+    
+    /**
+     * 删除电子书
+     */
+    boolean deleteEbook(Long ebookId, Long userId);
+    
+    /**
+     * 更新阅读进度
+     */
+    boolean updateReadingProgress(Long userId, Long ebookId, Integer currentPage, Integer totalPages);
     
     /**
      * 获取用户电子书列表
      */
-    Page<Ebook> getUserEbooks(Long userId, Integer page, Integer size, Long categoryId, String keyword);
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Ebook> getUserEbooks(Long userId, Integer page, Integer size, String keyword);
     
     /**
      * 获取电子书详情
@@ -35,52 +42,47 @@ public interface EbookService extends IService<Ebook> {
     Ebook getEbookDetail(Long ebookId, Long userId);
     
     /**
-     * 删除电子书
+     * 搜索电子书
      */
-    void deleteEbook(Long ebookId, Long userId);
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Ebook> searchEbooks(String keyword, Long userId, Integer page, Integer size);
     
     /**
-     * 收藏电子书
+     * 获取电子书统计信息
      */
-    void favoriteEbook(Long ebookId, Long userId);
+    Map<String, Object> getEbookStatistics(Long ebookId, Long userId);
     
     /**
-     * 取消收藏电子书
+     * 切换电子书收藏状态
      */
-    void unfavoriteEbook(Long ebookId, Long userId);
+    boolean toggleFavorite(Long ebookId, Long userId);
     
     /**
-     * 获取收藏的电子书列表
+     * 获取电子书详情（简化版本）
      */
-    Page<Ebook> getFavoriteEbooks(Long userId, Integer page, Integer size);
+    Ebook getEbookById(Long ebookId, Long userId);
     
     /**
-     * 更新阅读进度
+     * 上传电子书文件
      */
-    void updateReadingProgress(Long ebookId, Long userId, Integer progress, Integer pageNumber);
+    Ebook uploadEbook(Long userId, MultipartFile file, String title, String description, String author, String category, Long categoryId);
     
     /**
      * 获取阅读进度
      */
-    Map<String, Object> getReadingProgress(Long ebookId, Long userId);
+    Map<String, Object> getReadingProgress(Long userId, Long ebookId);
     
     /**
-     * 搜索电子书
+     * 收藏电子书
      */
-    Page<Ebook> searchEbooks(String keyword, Long userId, Integer page, Integer size);
+    boolean favoriteEbook(Long userId, Long ebookId);
     
     /**
-     * 增加查看次数
+     * 取消收藏电子书
      */
-    void incrementViewCount(Long ebookId);
+    boolean unfavoriteEbook(Long userId, Long ebookId);
     
     /**
-     * 获取热门电子书
+     * 获取收藏的电子书列表
      */
-    Page<Ebook> getPopularEbooks(Integer page, Integer size);
-    
-    /**
-     * 获取最近阅读的电子书
-     */
-    Page<Ebook> getRecentReadEbooks(Long userId, Integer page, Integer size);
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Ebook> getFavoriteEbooks(Long userId, Integer page, Integer size);
 }

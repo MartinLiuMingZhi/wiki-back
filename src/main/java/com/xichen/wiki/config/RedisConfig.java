@@ -9,12 +9,38 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 /**
  * Redis配置类
+ * 
+ * @author xichen
+ * @since 2024-09-25
  */
 @Configuration
 public class RedisConfig {
 
+    /**
+     * 默认Redis模板
+     */
     @Bean
     public RedisTemplate<String, Object> redisTemplate(RedisConnectionFactory connectionFactory) {
+        RedisTemplate<String, Object> template = new RedisTemplate<>();
+        template.setConnectionFactory(connectionFactory);
+        
+        // 设置key序列化方式
+        template.setKeySerializer(new StringRedisSerializer());
+        template.setHashKeySerializer(new StringRedisSerializer());
+        
+        // 设置value序列化方式
+        template.setValueSerializer(new GenericJackson2JsonRedisSerializer());
+        template.setHashValueSerializer(new GenericJackson2JsonRedisSerializer());
+        
+        template.afterPropertiesSet();
+        return template;
+    }
+    
+    /**
+     * 验证码专用Redis模板
+     */
+    @Bean("verificationCodeRedisTemplate")
+    public RedisTemplate<String, Object> verificationCodeRedisTemplate(RedisConnectionFactory connectionFactory) {
         RedisTemplate<String, Object> template = new RedisTemplate<>();
         template.setConnectionFactory(connectionFactory);
         

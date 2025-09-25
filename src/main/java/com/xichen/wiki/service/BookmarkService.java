@@ -1,10 +1,8 @@
 package com.xichen.wiki.service;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xichen.wiki.entity.Bookmark;
 
-import java.util.List;
 
 /**
  * 书签服务接口
@@ -17,24 +15,29 @@ public interface BookmarkService extends IService<Bookmark> {
     Bookmark createBookmark(Long userId, Long ebookId, Integer pageNumber, String note);
     
     /**
+     * 删除书签
+     */
+    boolean deleteBookmark(Long userId, Long bookmarkId);
+    
+    /**
+     * 批量删除书签
+     */
+    boolean batchDeleteBookmarks(Long userId, Long[] bookmarkIds);
+    
+    /**
+     * 获取用户书签列表
+     */
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Bookmark> getUserBookmarks(Long userId, Integer page, Integer size);
+    
+    /**
+     * 检查书签是否存在
+     */
+    boolean isBookmarked(Long userId, Long documentId);
+    
+    /**
      * 更新书签
      */
     Bookmark updateBookmark(Long bookmarkId, Long userId, String note);
-    
-    /**
-     * 获取电子书书签列表
-     */
-    List<Bookmark> getEbookBookmarks(Long ebookId, Long userId);
-    
-    /**
-     * 获取用户所有书签
-     */
-    Page<Bookmark> getUserBookmarks(Long userId, Integer page, Integer size, Long ebookId);
-    
-    /**
-     * 删除书签
-     */
-    void deleteBookmark(Long bookmarkId, Long userId);
     
     /**
      * 获取书签详情
@@ -42,7 +45,17 @@ public interface BookmarkService extends IService<Bookmark> {
     Bookmark getBookmarkDetail(Long bookmarkId, Long userId);
     
     /**
-     * 批量删除书签
+     * 获取电子书书签列表
      */
-    void deleteBookmarks(List<Long> bookmarkIds, Long userId);
+    java.util.List<Bookmark> getEbookBookmarks(Long ebookId, Long userId);
+    
+    /**
+     * 获取用户书签列表（带电子书ID过滤）
+     */
+    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Bookmark> getUserBookmarks(Long userId, Integer page, Integer size, Long ebookId);
+    
+    /**
+     * 批量删除书签（List版本）
+     */
+    void deleteBookmarks(java.util.List<Long> bookmarkIds, Long userId);
 }

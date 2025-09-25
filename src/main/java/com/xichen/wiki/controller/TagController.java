@@ -7,8 +7,8 @@ import com.xichen.wiki.service.TagService;
 import com.xichen.wiki.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,12 +25,12 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/tags")
-@RequiredArgsConstructor
 @Validated
 @io.swagger.v3.oas.annotations.tags.Tag(name = "标签管理", description = "标签创建、管理、搜索相关接口")
 public class TagController {
 
-    private final TagService tagService;
+    @Autowired
+    private TagService tagService;
 
     @Operation(summary = "创建标签", description = "创建新的标签")
     @PostMapping
@@ -71,7 +71,7 @@ public class TagController {
 
     @Operation(summary = "获取标签详情", description = "获取指定标签的详细信息")
     @GetMapping("/{id}")
-    public Result<Tag> getTagDetail(
+    public Result<Map<String, Object>> getTagDetail(
             @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
         
         Long userId = UserContext.getCurrentUserId();
@@ -80,11 +80,11 @@ public class TagController {
         }
 
         try {
-            Tag tag = tagService.getTagDetail(id, userId);
-            if (tag == null) {
+            Map<String, Object> tagDetail = tagService.getTagDetail(id, userId);
+            if (tagDetail == null) {
                 return Result.error(404, "标签不存在");
             }
-            return Result.success(tag);
+            return Result.success(tagDetail);
         } catch (Exception e) {
             log.error("获取标签详情失败：{}", e.getMessage());
             return Result.error("获取标签详情失败：" + e.getMessage());
@@ -209,7 +209,7 @@ public class TagController {
         }
 
         try {
-            Long usageCount = tagService.getTagUsageCount(id);
+            Integer usageCount = tagService.getTagUsageCount(id);
             Map<String, Object> result = Map.of(
                     "tagId", id,
                     "usageCount", usageCount

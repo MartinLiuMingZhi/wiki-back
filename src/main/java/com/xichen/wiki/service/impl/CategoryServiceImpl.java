@@ -6,7 +6,6 @@ import com.xichen.wiki.entity.Category;
 import com.xichen.wiki.exception.BusinessException;
 import com.xichen.wiki.mapper.CategoryMapper;
 import com.xichen.wiki.service.CategoryService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -20,16 +19,14 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> implements CategoryService {
 
     @Override
-    public Category createCategory(Long userId, String name, Long parentId, String type) {
+    public Category createCategory(Long userId, String name, Long parentId) {
         // 检查同级分类名称是否重复
         LambdaQueryWrapper<Category> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Category::getName, name)
                 .eq(Category::getParentId, parentId)
-                .eq(Category::getType, type)
                 .eq(Category::getUserId, userId);
         
         if (count(wrapper) > 0) {
@@ -39,7 +36,6 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         Category category = new Category();
         category.setName(name);
         category.setParentId(parentId);
-        category.setType(type);
         category.setUserId(userId);
         
         save(category);
@@ -101,7 +97,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     }
 
     @Override
-    public void deleteCategory(Long categoryId, Long userId) {
+    public boolean deleteCategory(Long categoryId, Long userId) {
         Category category = getById(categoryId);
         if (category == null) {
             throw new BusinessException("分类不存在");
@@ -120,6 +116,7 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         
         removeById(categoryId);
         log.info("分类删除成功：{}", category.getName());
+        return true;
     }
 
     @Override
@@ -145,6 +142,21 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
                 .orderByAsc(Category::getName);
         
         return list(wrapper);
+    }
+
+    @Override
+    public com.baomidou.mybatisplus.extension.plugins.pagination.Page<Category> getUserCategories(Long userId, Integer page, Integer size, String keyword) {
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Category> pageParam = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+        LambdaQueryWrapper<Category> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Category::getUserId, userId);
+        
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            wrapper.like(Category::getName, keyword);
+        }
+        
+        wrapper.orderByDesc(Category::getCreatedAt);
+        
+        return page(pageParam, wrapper);
     }
 
     /**

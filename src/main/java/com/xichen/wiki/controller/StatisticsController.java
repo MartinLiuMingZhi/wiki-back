@@ -5,8 +5,8 @@ import com.xichen.wiki.service.StatisticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -20,12 +20,12 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/statistics")
-@RequiredArgsConstructor
 @Validated
 @Tag(name = "统计分析", description = "统计和报表相关接口")
 public class StatisticsController {
 
-    private final StatisticsService statisticsService;
+    @Autowired
+    private StatisticsService statisticsService;
 
     @Operation(summary = "获取用户统计概览", description = "获取用户整体统计信息")
     @GetMapping("/overview")

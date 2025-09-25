@@ -2,7 +2,7 @@ package com.xichen.wiki.security;
 
 import com.xichen.wiki.entity.User;
 import com.xichen.wiki.service.UserService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,10 +15,10 @@ import java.util.Collections;
  * 自定义用户详情服务
  */
 @Service
-@RequiredArgsConstructor
 public class CustomUserDetailsService implements UserDetailsService {
 
-    private final UserService userService;
+    @Autowired
+    private UserService userService;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {

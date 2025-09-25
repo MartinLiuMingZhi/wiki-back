@@ -7,12 +7,13 @@ import com.xichen.wiki.entity.Ebook;
 import com.xichen.wiki.service.DocumentService;
 import com.xichen.wiki.service.EbookService;
 import com.xichen.wiki.service.SearchService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -23,12 +24,16 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class SearchServiceImpl implements SearchService {
 
-    private final DocumentService documentService;
-    private final EbookService ebookService;
-    private final RedisTemplate<String, Object> redisTemplate;
+    @Autowired
+    private DocumentService documentService;
+    
+    @Autowired
+    private EbookService ebookService;
+    
+    @Autowired
+    private RedisTemplate<String, Object> redisTemplate;
 
     private static final String SEARCH_HISTORY_KEY = "search:history:user:";
     private static final String POPULAR_SEARCH_KEY = "search:popular";
@@ -68,7 +73,6 @@ public class SearchServiceImpl implements SearchService {
         return result;
     }
 
-    @Override
     public Page<Document> searchDocuments(String keyword, Long userId, Integer page, Integer size) {
         Page<Document> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
@@ -81,7 +85,6 @@ public class SearchServiceImpl implements SearchService {
         return documentService.page(pageParam, wrapper);
     }
 
-    @Override
     public Page<Ebook> searchEbooks(String keyword, Long userId, Integer page, Integer size) {
         Page<Ebook> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Ebook> wrapper = new LambdaQueryWrapper<>();
@@ -95,22 +98,7 @@ public class SearchServiceImpl implements SearchService {
         return ebookService.page(pageParam, wrapper);
     }
 
-    @Override
-    public List<String> getSearchSuggestions(String keyword, Integer limit) {
-        if (StringUtils.isBlank(keyword)) {
-            return new ArrayList<>();
-        }
-        
-        String key = SEARCH_SUGGESTION_KEY + keyword.toLowerCase();
-        Set<Object> suggestions = redisTemplate.opsForZSet()
-                .reverseRange(key, 0, limit - 1);
-        
-        return suggestions.stream()
-                .map(Object::toString)
-                .collect(Collectors.toList());
-    }
 
-    @Override
     public List<String> getPopularSearchTerms(Integer limit) {
         Set<Object> popularTerms = redisTemplate.opsForZSet()
                 .reverseRange(POPULAR_SEARCH_KEY, 0, limit - 1);
@@ -120,7 +108,6 @@ public class SearchServiceImpl implements SearchService {
                 .collect(Collectors.toList());
     }
 
-    @Override
     public void recordSearchHistory(Long userId, String keyword, String type) {
         if (StringUtils.isBlank(keyword)) {
             return;
@@ -150,7 +137,6 @@ public class SearchServiceImpl implements SearchService {
         log.info("搜索历史记录成功：用户ID={}, 关键词={}, 类型={}", userId, keyword, type);
     }
 
-    @Override
     public List<Map<String, Object>> getUserSearchHistory(Long userId, Integer limit) {
         String key = SEARCH_HISTORY_KEY + userId;
         List<Object> history = redisTemplate.opsForList().range(key, 0, limit - 1);
@@ -160,11 +146,14 @@ public class SearchServiceImpl implements SearchService {
         }
         
         return history.stream()
-                .map(item -> (Map<String, Object>) item)
+                .map(item -> {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> map = (Map<String, Object>) item;
+                    return map;
+                })
                 .collect(Collectors.toList());
     }
 
-    @Override
     public void clearUserSearchHistory(Long userId) {
         String key = SEARCH_HISTORY_KEY + userId;
         redisTemplate.delete(key);
@@ -172,12 +161,84 @@ public class SearchServiceImpl implements SearchService {
     }
 
     @Override
-    public Map<String, Object> advancedSearch(Object request, Long userId) {
-        // 这里可以实现更复杂的搜索逻辑
-        // 暂时返回基本搜索结果
+    public Map<String, Object> advancedSearch(String keyword, String type, Long categoryId, Long[] tagIds, 
+                                              String sortBy, String sortOrder, Long userId, Integer page, Integer size) {
         Map<String, Object> result = new HashMap<>();
-        result.put("message", "高级搜索功能待实现");
+        
+        // 实现高级搜索逻辑
+        if (StringUtils.isNotBlank(keyword)) {
+            // 根据类型搜索
+            if ("document".equals(type)) {
+                result.put("documents", searchDocuments(keyword, userId, page, size));
+            } else if ("ebook".equals(type)) {
+                result.put("ebooks", searchEbooks(keyword, userId, page, size));
+            } else {
+                // 全局搜索
+                result.put("documents", searchDocuments(keyword, userId, page, size));
+                result.put("ebooks", searchEbooks(keyword, userId, page, size));
+            }
+        }
+        
+        result.put("keyword", keyword);
+        result.put("type", type);
         result.put("userId", userId);
+        result.put("page", page);
+        result.put("size", size);
+        
         return result;
+    }
+    
+    @Override
+    public String[] getSearchSuggestions(String keyword, Long userId) {
+        if (StringUtils.isBlank(keyword)) {
+            return new String[0];
+        }
+        
+        // 从Redis获取搜索建议
+        String suggestionsKey = "search:suggestions:" + keyword.toLowerCase();
+        Set<Object> suggestionsObj = redisTemplate.opsForSet().members(suggestionsKey);
+        Set<String> suggestions = suggestionsObj != null ? 
+            suggestionsObj.stream().map(Object::toString).collect(Collectors.toSet()) : 
+            new HashSet<>();
+        
+        if (suggestions == null || suggestions.isEmpty()) {
+            // 如果Redis中没有，从数据库获取
+            suggestions = getSuggestionsFromDatabase(keyword);
+            if (!suggestions.isEmpty()) {
+                // 存储到Redis，设置过期时间
+                redisTemplate.opsForSet().add(suggestionsKey, suggestions.toArray());
+                redisTemplate.expire(suggestionsKey, Duration.ofHours(1));
+            }
+        }
+        
+        return suggestions.toArray(new String[0]);
+    }
+    
+    private Set<String> getSuggestionsFromDatabase(String keyword) {
+        Set<String> suggestions = new HashSet<>();
+        
+        // 从文档标题中获取建议
+        LambdaQueryWrapper<Document> docWrapper = new LambdaQueryWrapper<>();
+        docWrapper.like(Document::getTitle, keyword)
+                .orderByDesc(Document::getCreatedAt)
+                .last("LIMIT 5");
+        
+        List<Document> documents = documentService.list(docWrapper);
+        for (Document doc : documents) {
+            suggestions.add(doc.getTitle());
+        }
+        
+        // 从电子书标题中获取建议
+        LambdaQueryWrapper<Ebook> ebookWrapper = new LambdaQueryWrapper<>();
+        ebookWrapper.like(Ebook::getTitle, keyword)
+                .orderByDesc(Ebook::getCreatedAt)
+                .last("LIMIT 5");
+        
+        List<Ebook> ebooks = ebookService.list(ebookWrapper);
+        for (Ebook ebook : ebooks) {
+            suggestions.add(ebook.getTitle());
+        }
+        
+        return suggestions;
     }
 }

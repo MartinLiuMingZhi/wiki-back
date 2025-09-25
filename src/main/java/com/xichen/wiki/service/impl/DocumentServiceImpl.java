@@ -7,21 +7,22 @@ import com.xichen.wiki.entity.Document;
 import com.xichen.wiki.exception.BusinessException;
 import com.xichen.wiki.mapper.DocumentMapper;
 import com.xichen.wiki.service.DocumentService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 文档服务实现类
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> implements DocumentService {
 
     @Override
-    public Document createDocument(Long userId, String title, String content, Long categoryId) {
+    public Document createDocument(Long userId, String title, String content, Long categoryId, Long[] tagIds) {
         Document document = new Document();
         document.setTitle(title);
         document.setContent(content);
@@ -37,7 +38,7 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
     }
 
     @Override
-    public Document updateDocument(Long documentId, Long userId, String title, String content, Long categoryId) {
+    public Document updateDocument(Long documentId, Long userId, String title, String content, Long categoryId, Long[] tagIds) {
         Document document = getById(documentId);
         if (document == null) {
             throw new BusinessException("文档不存在");
@@ -59,15 +60,43 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
     }
 
     @Override
-    public Page<Document> getUserDocuments(Long userId, Integer page, Integer size, Long categoryId, String keyword) {
+    public Page<Document> getUserDocuments(Long userId, Integer page, Integer size, String keyword) {
         Page<Document> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
         
         wrapper.eq(Document::getUserId, userId);
         
-        if (categoryId != null) {
-            wrapper.eq(Document::getCategoryId, categoryId);
+        if (StringUtils.isNotBlank(keyword)) {
+            wrapper.and(w -> w.like(Document::getTitle, keyword)
+                    .or()
+                    .like(Document::getContent, keyword));
         }
+        
+        wrapper.orderByDesc(Document::getUpdatedAt);
+        
+        return page(pageParam, wrapper);
+    }
+
+    @Override
+    public Document getDocumentById(Long documentId, Long userId) {
+        Document document = getById(documentId);
+        if (document == null) {
+            throw new BusinessException("文档不存在");
+        }
+        
+        if (!document.getUserId().equals(userId)) {
+            throw new BusinessException("无权限查看此文档");
+        }
+        
+        return document;
+    }
+
+    @Override
+    public Page<Document> searchDocuments(String keyword, Long userId, Integer page, Integer size) {
+        Page<Document> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
+        
+        wrapper.eq(Document::getUserId, userId);
         
         if (StringUtils.isNotBlank(keyword)) {
             wrapper.and(w -> w.like(Document::getTitle, keyword)
@@ -95,7 +124,7 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
     }
 
     @Override
-    public void deleteDocument(Long documentId, Long userId) {
+    public boolean deleteDocument(Long documentId, Long userId) {
         Document document = getById(documentId);
         if (document == null) {
             throw new BusinessException("文档不存在");
@@ -107,10 +136,11 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         
         removeById(documentId);
         log.info("文档删除成功：{}", document.getTitle());
+        return true;
     }
 
     @Override
-    public void toggleFavorite(Long documentId, Long userId) {
+    public boolean toggleFavorite(Long documentId, Long userId) {
         Document document = getById(documentId);
         if (document == null) {
             throw new BusinessException("文档不存在");
@@ -123,6 +153,29 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         document.setIsFavorite(!document.getIsFavorite());
         updateById(document);
         log.info("文档收藏状态切换成功：{}", document.getTitle());
+        return document.getIsFavorite();
     }
+    
+    @Override
+    public Map<String, Object> getDocumentStatistics(Long documentId, Long userId) {
+        Document document = getById(documentId);
+        if (document == null) {
+            throw new BusinessException("文档不存在");
+        }
+        
+        if (!document.getUserId().equals(userId)) {
+            throw new BusinessException("无权限查看此文档");
+        }
+        
+        Map<String, Object> statistics = new HashMap<>();
+        statistics.put("documentId", document.getId());
+        statistics.put("title", document.getTitle());
+        statistics.put("isFavorite", document.getIsFavorite());
+        statistics.put("createdAt", document.getCreatedAt());
+        statistics.put("updatedAt", document.getUpdatedAt());
+        
+        return statistics;
+    }
+    
 }
 

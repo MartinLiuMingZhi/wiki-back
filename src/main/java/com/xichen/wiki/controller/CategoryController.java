@@ -6,8 +6,8 @@ import com.xichen.wiki.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,12 +22,12 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/categories")
-@RequiredArgsConstructor
 @Validated
 @Tag(name = "分类管理", description = "分类CRUD操作相关接口")
 public class CategoryController {
 
-    private final CategoryService categoryService;
+    @Autowired
+    private CategoryService categoryService;
 
     @Operation(summary = "创建分类", description = "创建新的分类")
     @PostMapping
@@ -41,8 +41,7 @@ public class CategoryController {
         Category category = categoryService.createCategory(
                 userId,
                 request.getName(),
-                request.getParentId(),
-                request.getType()
+                request.getParentId()
         );
         
         return Result.success("创建成功", category);

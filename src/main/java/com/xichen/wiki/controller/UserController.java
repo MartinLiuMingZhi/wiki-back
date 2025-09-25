@@ -8,8 +8,8 @@ import com.xichen.wiki.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,12 +27,12 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/users")
-@RequiredArgsConstructor
 @Validated
 @Tag(name = "用户管理", description = "用户信息管理相关接口")
 public class UserController {
 
-    private final UserService userService;
+    @Autowired
+    private UserService userService;
 
     @Operation(summary = "获取当前用户信息", description = "获取当前登录用户的详细信息")
     @GetMapping("/me")
@@ -106,7 +106,7 @@ public class UserController {
     @Operation(summary = "重置密码", description = "通过邮箱重置密码")
     @PostMapping("/reset-password")
     public Result<String> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-        userService.resetPassword(request.getEmail(), request.getNewPassword());
+        userService.resetPassword(request.getEmail(), request.getNewPassword(), request.getVerificationCode());
         return Result.success("密码重置成功");
     }
 
@@ -206,11 +206,16 @@ public class UserController {
         @Size(min = 6, max = 20, message = "新密码长度必须在6-20个字符之间")
         private String newPassword;
         
+        @NotBlank(message = "验证码不能为空")
+        private String verificationCode;
+        
         // Getters and Setters
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
         public String getNewPassword() { return newPassword; }
         public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+        public String getVerificationCode() { return verificationCode; }
+        public void setVerificationCode(String verificationCode) { this.verificationCode = verificationCode; }
     }
 
     /**

@@ -1,497 +1,365 @@
-# 移动端Wiki 知识库APP开发文档（V1.0）
+# Wiki 知识管理系统
 
-## 一、项目概述
+一个基于Spring Boot 3.5.6的现代化知识管理系统，采用微服务架构设计，支持文档管理、用户认证、邮箱验证、文件存储等功能。
 
-### 1.1 项目背景
+## ✨ 核心功能
 
-在信息爆炸的时代，个人和团队对于知识管理的需求日益增长。现有知识库APP旨在提供一个便捷的个人知识库解决方案，允许用户存储、管理各类文档，并特别强化了PDF电子书的管理与阅读功能，帮助用户构建个人知识体系。
+- 📚 **文档管理**: 创建、编辑、分类、搜索文档，支持版本控制
+- 👤 **用户系统**: 注册、登录、权限管理，支持邮箱验证
+- 📧 **邮箱验证**: QQ邮箱验证码登录注册，安全可靠
+- 🔐 **安全认证**: JWT + Spring Security，多层安全防护
+- 📁 **文件存储**: 七牛云文件上传，支持多种文件格式
+- 🔍 **全文搜索**: 智能文档搜索，支持高级搜索
+- 📊 **数据统计**: 用户行为分析，系统监控
+- 🏷️ **标签系统**: 灵活的标签管理，便于分类
+- 📖 **电子书管理**: 电子书上传、阅读、书签功能
 
-### 1.2 产品定位
+## 🚀 技术栈
 
-一款轻量级、跨平台的个人知识库应用，专注于文档管理与PDF阅读体验，兼顾实用性与易用性，支持离线使用。
+- **后端框架**: Spring Boot 3.5.6
+- **数据库**: MySQL 8.0 + Redis 6.0
+- **ORM框架**: MyBatis Plus
+- **安全框架**: Spring Security + JWT
+- **邮件服务**: Spring Mail + QQ邮箱
+- **文件存储**: 七牛云对象存储
+- **API文档**: Swagger/OpenAPI 3.0
+- **配置加密**: Jasypt
+- **构建工具**: Maven 3.6+
 
-### 1.3 目标用户
-
-- 学生群体：管理学习资料、课件和文献
-- 职场人士：存储工作文档、行业报告和专业书籍
-- 知识爱好者：整理个人阅读资料和学习笔记
-
-### 1.4 核心价值
-
-- 一站式知识管理：集中存储各类文档，告别分散管理
-- 优质阅读体验：专为移动设备优化的PDF阅读功能
-- 离线可用：无需网络也能访问已下载的内容
-- 跨平台同步：在不同设备间保持数据一致性
-
-## 二、功能需求
-
-### 2.1 功能架构图
-
-```
-┌─────────────────────────────────────────┐
-│              移动端知识库APP            │
-├─────────────┬─────────────┬─────────────┤
-│   首页模块   │  知识库模块  │  电子书模块  │
-├─────────────┼─────────────┼─────────────┤
-│   个人中心   │  搜索模块   │  设置模块   │
-└─────────────┴─────────────┴─────────────┘
-```
-
-### 2.2 详细功能说明
-
-#### 2.2.1 首页模块
-
-- 展示最近访问的文档和电子书
-- 显示收藏的重要内容
-- 提供快捷操作入口（新建文档、上传电子书）
-- 展示知识统计数据（文档总数、分类占比等）
-
-#### 2.2.2 知识库模块
-
-- 文档分类管理（支持多级分类）
-- 文档列表展示（列表/网格视图切换）
-- 文档基本操作（创建、编辑、删除、移动）
-- 文档版本历史记录
-- 支持富文本编辑
-
-#### 2.2.3 电子书模块（核心功能）
-
-- 电子书列表展示（支持按名称、日期、分类筛选）
-- PDF文件上传：
-    - 支持从本地文件选择
-    - 支持从其他应用分享导入
-    - 上传进度显示
-    - 上传失败重试机制
-- 电子书信息管理：
-    - 自定义标题、作者信息
-    - 设置分类和标签
-    - 上传自定义封面
-    - 添加阅读笔记
-- PDF阅读器：
-    - 流畅的页面渲染
-    - 支持页面缩放（双击放大/双指缩放）
-    - 页面导航（上一页/下一页/指定页码）
-    - 目录导航（支持PDF内置目录）
-    - 书签功能（添加/删除/跳转到书签）
-    - 文本搜索（高亮显示结果）
-    - 夜间模式切换
-    - 页面旋转
-    - 阅读进度记忆
-
-#### 2.2.4 个人中心模块
-
-- 用户信息展示与编辑
-- 我的收藏
-- 阅读历史
-- 我的上传
-- 存储空间使用情况
-
-#### 2.2.5 搜索模块
-
-- 全局搜索（支持文档和电子书）
-- 搜索结果分类展示
-- 搜索历史记录
-- 热门搜索推荐
-
-#### 2.2.6 设置模块
-
-- 账户管理（登录/注册/退出）
-- 同步设置
-- 存储空间管理
-- 主题切换（浅色/深色）
-- 通知设置
-- 关于与帮助
-
-### 2.3 非功能需求
-
-- **性能要求**：
-    - 应用启动时间≤3秒
-    - 页面切换响应时间≤0.5秒
-    - PDF加载时间≤2秒（100MB以内文件）
-- **兼容性要求**：
-    - 支持iOS 13.0及以上版本
-    - 支持Android 8.0及以上版本
-    - 适配主流手机屏幕尺寸（4.7-6.7英寸）
-- **安全要求**：
-    - 支持应用锁功能（PIN/指纹）
-    - 敏感数据加密存储
-    - 隐私权限最小化原则
-- **可用性要求**：
-    - 离线可用（已缓存内容）
-    - 操作失误可撤销
-    - 清晰的错误提示与恢复指导
-
-## 三、技术方案
-
-### 3.1 开发框架与环境
-
-- **开发框架**：Flutter 3.10+
-- **开发语言**：Dart 3.0+
-- **IDE**：Android Studio / Visual Studio Code
-- **版本控制**：Git + GitHub/GitLab
-- **CI/CD**：GitHub Actions / Jenkins
-
-### 3.2 核心技术栈
-
-| 功能领域  | 选用技术/插件                             | 用途说明       |
-|-------|-------------------------------------|------------|
-| 状态管理  | Provider                            | 管理应用全局状态   |
-| 路由管理  | auto_route                          | 类型安全的路由导航  |
-| 网络请求  | dio + retrofit                      | API请求与响应处理 |
-| 本地存储  | Hive                                | 轻量级文档元数据存储 |
-| 数据库   | Drift/SQLite                        | 复杂数据关系管理   |
-| 文件管理  | path_provider + flutter_file_dialog | 本地文件操作     |
-| PDF处理 | pdfx                                | PDF渲染与阅读功能 |
-| 文件选择  | file_picker                         | 本地文件选择上传   |
-| 图片处理  | image_picker + cached_network_image | 图片选择与缓存    |
-| 权限管理  | permission_handler                  | 设备权限申请与管理  |
-| 加密    | encrypt                             | 敏感数据加密     |
-| 搜索功能  | flutter_typeahead                   | 搜索建议与自动完成  |
-| 统计分析  | firebase_analytics                  | 用户行为分析     |
-| 崩溃监控  | firebase_crashlytics                | 应用崩溃跟踪与分析  |
-
-### 3.3 系统架构设计
-
-采用_clean architecture_架构模式，分为以下几层：
-
-1. **表现层（Presentation）**：
-    - 包含所有UI组件、页面和状态管理
-    - 依赖于领域层，不直接依赖数据层
-
-2. **领域层（Domain）**：
-    - 包含业务逻辑、实体模型和用例
-    - 不依赖于其他层，是应用的核心
-
-3. **数据层（Data）**：
-    - 包含数据来源（本地存储、远程API）
-    - 实现领域层定义的接口
-    - 负责数据转换和映射
-
-4. **核心层（Core）**：
-    - 包含通用工具类、常量和扩展方法
-    - 被其他所有层依赖
+## 📁 项目结构
 
 ```
-lib/
-├── core/           # 核心层（通用工具、常量、主题、网络配置、路由）
-│   ├── utils/      # 工具类（日期、字符串、storage）
-│   ├── theme/      # 主题、颜色
-│   ├── constants/  # 全局常量
-│   ├── services/   # 通用服务（如 API client、storage service）
-│   └── error/      # 错误处理/异常
-│
-├── features/       # 功能模块（按领域划分）
-│   ├── auth/       # 用户模块
-│   │   ├── models/     # 仅此功能的模型
-│   │   ├── providers/  # 状态管理
-│   │   ├── pages/      # 登录/注册页面
-│   │   └── widgets/    # 模块内复用组件
-│   ├── document/   # 文档模块
-│   ├── ebook/      # 电子书模块
-│   └── search/     # 搜索模块
-│
-├── pages/          # **全局路由页面入口**（不强绑定功能）
-│   ├── home_page.dart
-│   ├── splash_page.dart
-│   └── settings_page.dart
-│
-├── models/         # 全局数据模型（跨模块共享，比如 User、AppConfig）
-│
-├── providers/      # 全局 Provider（比如 ThemeProvider、AuthProvider）
-│
-├── widgets/        # 全局复用 UI 组件（通用 Button、Dialog、AppBar）
-│
-└── main.dart       # 入口
+wiki/
+├── src/main/java/com/xichen/wiki/
+│   ├── common/          # 通用组件
+│   ├── config/          # 配置类
+│   ├── constant/        # 常量定义
+│   ├── controller/      # REST控制器
+│   ├── dto/            # 数据传输对象
+│   ├── entity/         # 实体类
+│   ├── exception/      # 异常处理
+│   ├── mapper/         # 数据访问层
+│   ├── security/      # 安全配置
+│   ├── service/       # 服务接口层
+│   │   └── impl/      # 服务实现层
+│   └── util/          # 工具类
+├── src/main/resources/
+│   ├── application.properties  # 应用配置
+│   ├── templates/              # 邮件模板
+│   └── sql/                   # 数据库脚本
+└── src/test/                  # 测试代码
 ```
 
-### 3.4 数据模型设计
+## 🏗️ 架构设计
 
-#### 3.4.1 用户模型（User）
+### 分层架构
 
-```dart
-class User {
-  final String id;
-  final String username;
-  final String email;
-  final String? avatarUrl;
-  final DateTime createdAt;
-  final bool isPremium;
-}
+```
+┌─────────────────────────────────────┐
+│            Controller层              │  # REST API控制器
+├─────────────────────────────────────┤
+│            Service层                │  # 业务逻辑接口
+│            └── impl/               │  # 业务逻辑实现
+├─────────────────────────────────────┤
+│            Mapper层                 │  # 数据访问层
+├─────────────────────────────────────┤
+│            Entity层                 │  # 实体类
+└─────────────────────────────────────┘
 ```
 
-#### 3.4.2 文档模型（Document）
+### 核心特性
 
-```dart
-class Document {
-  final String id;
-  final String title;
-  final String content;
-  final String? categoryId;
-  final List<String> tags;
-  final DateTime createdAt;
-  final DateTime updatedAt;
-  final int version;
-  final bool isFavorite;
-  final int wordCount;
-}
+- **接口分离**：所有服务都有对应的接口，便于测试和扩展
+- **配置分离**：Redis、Mail等配置独立管理，降低耦合度
+- **HTML邮件**：美观的邮件模板，提升用户体验
+- **安全加密**：敏感信息使用Jasypt加密存储
+- **缓存优化**：Redis + 数据库混合存储验证码
+- **统一架构**：所有服务层接口和实现分离，架构一致
+- **代码优化**：修复了所有编译错误，统一了方法签名
+
+## 🚀 快速开始
+
+### 环境要求
+
+- **JDK**: 17+
+- **MySQL**: 8.0+
+- **Redis**: 6.0+
+- **Maven**: 3.6+
+
+### 安装步骤
+
+1. **克隆项目**
+   ```bash
+   git clone <repository-url>
+   cd wiki
+   ```
+
+2. **配置数据库**
+   ```sql
+   CREATE DATABASE wiki CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+
+3. **配置Redis**
+   ```bash
+   # 启动Redis服务
+   redis-server
+   ```
+
+4. **配置应用**
+   ```bash
+   # 编辑配置文件
+   vim src/main/resources/application.properties
+   
+   # 更新数据库连接
+   spring.datasource.url=jdbc:mysql://localhost:3306/wiki
+   spring.datasource.username=root
+   spring.datasource.password=your_password
+   
+   # 配置QQ邮箱（可选）
+   spring.mail.username=your_email@qq.com
+   spring.mail.password=your_authorization_code
+   ```
+
+5. **运行项目**
+   ```bash
+   # 方式1: Maven运行
+   mvn spring-boot:run
+   
+   # 方式2: 打包运行
+   mvn clean package
+   java -jar target/wiki.jar
+   
+   # 方式3: Docker运行
+   docker-compose up -d
+   ```
+
+6. **访问应用**
+   - 🌐 **应用地址**: http://localhost:8080
+   - 📚 **API文档**: http://localhost:8080/swagger-ui.html
+   - 🔧 **健康检查**: http://localhost:8080/actuator/health
+
+## 🔐 安全配置
+
+### 敏感信息加密
+
+项目使用Jasypt对敏感信息进行加密保护：
+
+```properties
+# 数据库密码加密
+spring.datasource.password=ENC(加密后的密码)
+
+# JWT密钥加密
+jwt.secret=ENC(加密后的JWT密钥)
+
+# 七牛云配置加密
+qiniu.access-key=ENC(加密后的访问密钥)
+qiniu.secret-key=ENC(加密后的秘密密钥)
 ```
 
-#### 3.4.3 电子书模型（Ebook）
+### 生成加密值
 
-```dart
-class Ebook {
-  final String id;
-  final String title;
-  final String author;
-  final String localFilePath; // 本地存储路径
-  final String? remoteFileUrl; // 远程文件URL（用于同步）
-  final String? coverImagePath; // 封面图片路径
-  final String? categoryId;
-  final List<String> tags;
-  final String? description;
-  final int fileSize; // 文件大小（字节）
-  final int pageCount; // 总页数
-  final int currentPage; // 当前阅读页
-  final double progress; // 阅读进度（0-1）
-  final DateTime uploadDate;
-  final DateTime lastReadDate;
-  final bool isFavorite;
-  final List<Bookmark> bookmarks; // 书签列表
-}
+```bash
+# 使用Maven插件生成加密值
+mvn jasypt:encrypt -Djasypt.encryptor.password=WikiSecretKey2024!@#
+
+# 或使用命令行工具
+java -cp "target/classes;target/dependency/*" org.jasypt.intf.cli.JasyptPBEStringEncryptionCLI \
+  input="your_plain_text" password="WikiSecretKey2024!@#" algorithm="PBEWithMD5AndDES"
 ```
 
-#### 3.4.4 书签模型（Bookmark）
+## 📚 API文档
 
-```dart
-class Bookmark {
-  final String id;
-  final String ebookId;
-  final int pageNumber;
-  final String? note; // 书签备注
-  final DateTime createdAt;
-}
+### 🔐 认证接口
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/v1/auth/login` | POST | 用户名密码登录 |
+| `/api/v1/auth/register` | POST | 用户注册 |
+| `/api/v1/auth/send-verification-code` | POST | 发送邮箱验证码 |
+| `/api/v1/auth/register-with-email` | POST | 邮箱验证码注册 |
+| `/api/v1/auth/login-with-email` | POST | 邮箱验证码登录 |
+
+### 📄 文档管理
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/v1/documents` | GET | 获取文档列表 |
+| `/api/v1/documents` | POST | 创建文档 |
+| `/api/v1/documents/{id}` | GET | 获取文档详情 |
+| `/api/v1/documents/{id}` | PUT | 更新文档 |
+| `/api/v1/documents/{id}` | DELETE | 删除文档 |
+
+### 👤 用户管理
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/v1/users/profile` | GET | 获取用户信息 |
+| `/api/v1/users/profile` | PUT | 更新用户信息 |
+| `/api/v1/users/change-password` | POST | 修改密码 |
+| `/api/v1/users/avatar` | POST | 更新头像 |
+
+### 📁 文件管理
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/v1/files/upload-url` | POST | 获取上传URL |
+| `/api/v1/files/confirm` | POST | 确认上传 |
+| `/api/v1/files/{id}` | GET | 文件下载 |
+
+### 🔍 搜索功能
+
+| 接口 | 方法 | 描述 |
+|------|------|------|
+| `/api/v1/search` | GET | 全文搜索 |
+| `/api/v1/search/advanced` | POST | 高级搜索 |
+
+## 🗄️ 数据库设计
+
+### 核心表结构
+
+| 表名 | 描述 | 主要字段 |
+|------|------|----------|
+| `users` | 用户表 | id, username, email, password, avatar_url |
+| `documents` | 文档表 | id, title, content, author_id, category_id |
+| `categories` | 分类表 | id, name, description, parent_id |
+| `tags` | 标签表 | id, name, color, description |
+| `bookmarks` | 书签表 | id, user_id, document_id, created_time |
+| `user_activities` | 用户活动表 | id, user_id, activity_type, description |
+| `verification_codes` | 验证码表 | id, email, code, type, used, expire_time |
+
+### 数据库初始化
+
+```sql
+-- 创建数据库
+CREATE DATABASE wiki CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+-- 执行初始化脚本
+source src/main/resources/sql/schema.sql;
+source src/main/resources/sql/data.sql;
+source src/main/resources/sql/verification_codes.sql;
 ```
 
-### 3.5 API接口设计（简要）
+## 🚀 部署
 
-#### 3.5.1 用户相关接口
+### Docker部署（推荐）
 
-- `POST /api/auth/login` - 用户登录
-- `POST /api/auth/register` - 用户注册
-- `GET /api/users/me` - 获取当前用户信息
-- `PUT /api/users/me` - 更新用户信息
+```bash
+# 使用Docker Compose一键部署
+docker-compose up -d
 
-#### 3.5.2 文档相关接口
+# 查看服务状态
+docker-compose ps
 
-- `GET /api/documents` - 获取文档列表
-- `POST /api/documents` - 创建新文档
-- `GET /api/documents/{id}` - 获取文档详情
-- `PUT /api/documents/{id}` - 更新文档
-- `DELETE /api/documents/{id}` - 删除文档
+# 查看日志
+docker-compose logs -f wiki
+```
 
-#### 3.5.3 电子书相关接口
+### 传统部署
 
-- `GET /api/ebooks` - 获取电子书列表
-- `POST /api/ebooks` - 上传电子书元信息
-- `POST /api/ebooks/upload` - 上传电子书文件
-- `GET /api/ebooks/{id}` - 获取电子书详情
-- `PUT /api/ebooks/{id}` - 更新电子书信息
-- `DELETE /api/ebooks/{id}` - 删除电子书
-- `POST /api/ebooks/{id}/bookmarks` - 添加书签
-- `GET /api/ebooks/{id}/bookmarks` - 获取书签列表
+```bash
+# 1. 打包应用
+mvn clean package -DskipTests
 
-## 四、UI/UX设计
+# 2. 运行应用
+java -jar target/wiki.jar
 
-### 4.1 设计规范
+# 3. 后台运行
+nohup java -jar target/wiki.jar > wiki.log 2>&1 &
+```
 
-- **设计语言**：遵循Material Design 3设计规范
-- **主色调**：#2563EB（蓝色）- 传达专业、可信的形象
-- **辅助色**：#7C3AED（紫色）- 用于电子书模块，形成视觉区分
-- **中性色**：
-    - 背景：#F8FAFC（浅灰）、#1E293B（深灰）
-    - 文本：#0F172A（主要）、#64748B（次要）
-- **字体**：
-    - 标题：Inter，粗体
-    - 正文：Inter，常规
-    - 辅助文字：Inter，轻量
+### 生产环境配置
 
-### 4.2 页面布局设计
+```bash
+# 设置环境变量
+export JASYPT_ENCRYPTOR_PASSWORD=YourProductionSecretKey2024!@#
+export SPRING_PROFILES_ACTIVE=prod
 
-#### 4.2.1 首页
+# 启动应用
+java -jar target/wiki.jar
+```
 
-- 顶部：应用标题 + 用户头像
-- 上部：快捷操作区（新建文档、上传电子书）
-- 中部：最近访问内容列表
-- 下部：知识统计卡片 + 推荐内容
+## 🔧 配置说明
 
-#### 4.2.2 电子书列表页
+### 核心配置
 
-- 顶部：标题栏 + 搜索/筛选按钮 + 排序选项
-- 中部：分类标签栏（水平滚动）
-- 下部：电子书列表（支持列表/网格视图切换）
+| 配置项 | 描述 | 示例值 |
+|--------|------|--------|
+| `spring.datasource.url` | 数据库连接 | `jdbc:mysql://localhost:3306/wiki` |
+| `spring.data.redis.host` | Redis地址 | `localhost` |
+| `spring.mail.username` | 邮箱用户名 | `your_email@qq.com` |
+| `jwt.secret` | JWT密钥 | `ENC(加密后的密钥)` |
+| `qiniu.access-key` | 七牛云访问密钥 | `ENC(加密后的密钥)` |
 
-#### 4.2.3 PDF上传流程
+### 环境变量配置
 
-1. **文件选择页**：
-    - 大尺寸文件选择区域
-    - 支持拖放操作（Android）
-    - 文件格式与大小限制提示
-    - 下一步按钮（选择文件后激活）
+```bash
+# 开发环境
+export SPRING_PROFILES_ACTIVE=dev
+export JASYPT_ENCRYPTOR_PASSWORD=WikiSecretKey2024!@#
 
-2. **信息编辑页**：
-    - 封面预览与更换区域
-    - 元信息表单（标题、作者、分类等）
-    - 完成按钮
+# 生产环境
+export SPRING_PROFILES_ACTIVE=prod
+export JASYPT_ENCRYPTOR_PASSWORD=YourProductionSecretKey2024!@#
+```
 
-#### 4.2.4 PDF阅读器
+## 🐛 故障排除
 
-- 顶部：标题栏（可自动隐藏）
-    - 返回按钮
-    - 书名（自动截断）
-    - 操作菜单（收藏、分享、更多）
-- 中部：PDF内容区（占屏幕主要部分）
-- 底部：控制栏（可自动隐藏）
-    - 翻页按钮
-    - 页码指示器
-    - 缩放控制
-    - 目录按钮
+### 常见问题
 
-### 4.3 交互设计
+1. **数据库连接失败**
+   - 检查MySQL服务是否启动
+   - 确认数据库连接信息正确
+   - 检查网络连接
 
-- **导航模式**：底部标签导航（首页、知识库、电子书、我的）
-- **手势操作**：
-    - 阅读器内上下滑动翻页
-    - 双指捏合缩放PDF内容
-    - 双击PDF内容快速放大/缩小
-    - 左右滑动切换标签页
-- **过渡动画**：
-    - 页面切换使用滑动过渡
-    - 弹窗使用淡入缩放效果
-    - 加载状态使用骨架屏
-- **反馈机制**：
-    - 操作成功显示短暂Toast提示
-    - 重要操作需要确认对话框
-    - 加载状态显示进度指示器
+2. **Redis连接失败**
+   - 检查Redis服务是否启动
+   - 确认Redis配置正确
 
-## 五、开发计划
+3. **文件上传失败**
+   - 检查七牛云配置
+   - 确认网络连接正常
 
-### 5.1 开发阶段划分
+### 日志配置
 
-| 阶段      | 时间      | 主要任务              | 交付物               |
-|---------|---------|-------------------|-------------------|
-| 需求分析与设计 | 第1-2周   | 需求细化、UI设计、技术方案确定  | 需求文档、UI设计稿、技术方案文档 |
-| 基础架构搭建  | 第3周     | 项目初始化、架构搭建、基础组件开发 | 基础项目框架、通用组件库      |
-| 核心功能开发  | 第4-8周   | 首页、知识库模块、用户中心开发   | 可运行的基础版本          |
-| 电子书功能开发 | 第9-12周  | PDF上传、列表展示、阅读器开发  | 包含电子书功能的测试版本      |
-| 优化与完善   | 第13-14周 | 性能优化、UI细节调整、bug修复 | 优化后的测试版本          |
-| 测试与修复   | 第15周    | 全面测试、兼容性测试、用户体验测试 | 测试报告、修复后的版本       |
-| 发布准备    | 第16周    | 应用商店资料准备、打包发布     | 发布版本、应用商店资料       |
+```properties
+logging.level.com.xichen.wiki=DEBUG
+```
 
-### 5.2 里程碑
+## 📝 开发指南
 
-1. **M1（第3周末）**：基础架构搭建完成
-    - 完成项目框架搭建
-    - 实现基础导航功能
-    - 完成通用组件开发
+### 代码规范
 
-2. **M2（第8周末）**：核心功能完成
-    - 首页模块功能完整
-    - 知识库模块功能完整
-    - 用户中心基础功能完成
+- 使用Lombok减少样板代码
+- 遵循RESTful API设计
+- 统一异常处理
+- 使用Swagger文档注解
 
-3. **M3（第12周末）**：电子书功能完成
-    - 实现PDF上传功能
-    - 完成电子书列表与管理
-    - 实现PDF阅读器核心功能
+### 测试
 
-4. **M4（第16周末）**：正式发布版本
-    - 应用通过应用商店审核
-    - 发布iOS和Android版本
-    - 完成用户手册和帮助文档
+```bash
+# 运行测试
+mvn test
 
-## 六、测试计划
+# 运行特定测试
+mvn test -Dtest=UserServiceTest
+```
 
-### 6.1 测试策略
+## 🤝 贡献指南
 
-采用**敏捷测试**方法，与开发同步进行，确保问题及早发现和解决。
+1. Fork项目
+2. 创建特性分支
+3. 提交更改
+4. 推送到分支
+5. 创建Pull Request
 
-### 6.2 测试类型
+## 📄 许可证
 
-- **单元测试**：测试独立功能模块和业务逻辑
-- **集成测试**：测试模块间交互和数据流转
-- **UI测试**：测试界面展示和用户交互
-- **性能测试**：测试应用响应速度和资源占用
-- **兼容性测试**：在不同设备和系统版本上测试
-- **用户体验测试**：邀请真实用户进行使用体验测试
+本项目采用MIT许可证。
 
-### 6.3 重点测试场景
+## 📞 支持
 
-1. **PDF处理相关**：
-    - 不同大小的PDF文件加载与渲染
-    - 复杂排版的PDF文件显示效果
-    - PDF搜索功能准确性
-    - 书签功能的添加与跳转
-
-2. **文件上传相关**：
-    - 不同网络环境下的上传稳定性
-    - 大文件上传的断点续传
-    - 上传失败的错误处理与重试
-
-3. **性能相关**：
-    - 应用启动时间
-    - 页面切换流畅度
-    - 内存占用情况
-    - 电池消耗情况
-
-## 七、发布与维护
-
-### 7.1 发布渠道
-
-- iOS：Apple App Store
-- Android：Google Play、华为应用市场、小米应用商店、应用宝
-
-### 7.2 版本策略
-
-- 采用语义化版本号：主版本号.次版本号.修订号
-- 主版本号：重大功能更新
-- 次版本号：新增功能
-- 修订号：bug修复和性能优化
-
-### 7.3 维护计划
-
-- 日常维护：监控应用崩溃和错误报告，24小时内响应严重问题
-- 定期更新：每2-3个月发布一次功能更新
-- 用户反馈：建立反馈渠道，每周分析用户反馈并制定改进计划
-- 数据备份：确保用户数据安全，提供数据导出功能
-
-## 八、风险评估与应对措施
-
-| 风险类别 | 具体风险       | 可能性 | 影响程度 | 应对措施                                         |
-|------|------------|-----|------|----------------------------------------------|
-| 技术风险 | PDF渲染兼容性问题 | 中   | 高    | 1. 进行充分的兼容性测试<br>2. 支持主流PDF版本<br>3. 提供格式转换建议 |
-| 技术风险 | 大文件处理性能问题  | 中   | 中    | 1. 实现文件分片加载<br>2. 优化内存使用<br>3. 提供性能模式选项      |
-| 产品风险 | 用户体验不佳     | 中   | 高    | 1. 早期进行用户测试<br>2. 收集并快速响应反馈<br>3. 持续优化交互设计   |
-| 项目风险 | 开发进度延迟     | 中   | 中    | 1. 设置明确的里程碑<br>2. 定期进度审查<br>3. 预留缓冲时间应对风险    |
-| 运营风险 | 用户数据安全问题   | 低   | 高    | 1. 严格的数据加密措施<br>2. 遵循隐私保护法规<br>3. 定期安全审计     |
-
-## 九、附录
-
-### 9.1 参考资料
-
-- Flutter官方文档：https://flutter.dev/docs
-- Material Design 3指南：https://m3.material.io/
-- PDF规范文档：https://www.adobe.com/content/dam/acom/en/devnet/pdf/pdfs/PDF32000_2008.pdf
-
-### 9.2 名词解释
-
-- **离线可用**：指应用在没有网络连接的情况下，用户仍能访问已缓存到本地的内容
-- **元信息**：指描述电子书的信息，如标题、作者、分类等
-- **富文本**：指支持多种格式（如字体、颜色、图片等）的文本内容
-
-### 9.3 联系方式
-
-- 项目负责人：[姓名]，[邮箱]
-- 技术支持：[邮箱]，[电话]
+如有问题，请提交Issue或联系开发团队。
 
 ---
 
+**注意**: 请确保在生产环境中使用强密钥，并定期更新加密配置。

@@ -3,11 +3,9 @@ package com.xichen.wiki.service.impl;
 import com.qiniu.common.QiniuException;
 import com.qiniu.http.Response;
 import com.qiniu.storage.Configuration;
-import com.qiniu.storage.Region;
 import com.qiniu.storage.UploadManager;
 import com.qiniu.util.Auth;
 import com.xichen.wiki.service.FileService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,7 +28,6 @@ import java.util.UUID;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class FileServiceImpl implements FileService {
 
     // 七牛云配置
@@ -118,7 +115,7 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public void deleteFile(String fileKey, Long userId) {
+    public boolean deleteFile(String fileKey, Long userId) {
         try {
             if ("qiniu".equals(storageType)) {
                 deleteFromQiniu(fileKey);
@@ -127,6 +124,7 @@ public class FileServiceImpl implements FileService {
                 deleteFromLocal(fileKey);
                 log.info("文件从本地删除成功：用户ID={}, 文件路径={}", userId, fileKey);
             }
+            return true;
         } catch (Exception e) {
             log.error("文件删除失败：{}", e.getMessage());
             throw new RuntimeException("文件删除失败", e);
@@ -177,23 +175,23 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public long getFileSize(String fileKey) {
+    public Long getFileSize(String fileKey) {
         if ("qiniu".equals(storageType)) {
             // 简化处理，实际应该调用七牛云API查询
-            return 0;
+            return 0L;
         } else {
             try {
                 Path filePath = Paths.get(uploadPath, fileKey);
                 return Files.size(filePath);
             } catch (IOException e) {
                 log.error("获取文件大小失败：{}", e.getMessage());
-                return 0;
+                return 0L;
             }
         }
     }
 
     @Override
-    public Map<String, Object> generateUploadUrl(String fileName, String contentType, String folder, Long userId) {
+    public Map<String, Object> generateUploadUrl(String fileName, String fileType, String folder, Long userId) {
         String extension = getFileExtension(fileName);
         String newFileName = generateFileName(extension);
         String fileKey = buildFilePath(folder, userId, newFileName);
@@ -216,10 +214,11 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public void confirmUpload(String fileKey, Long fileSize, Long userId) {
+    public String confirmUpload(String key, Long userId, Long fileSize) {
         // 验证文件是否存在且大小正确
-        if (fileExists(fileKey) && getFileSize(fileKey) == fileSize) {
-            log.info("文件上传确认成功：用户ID={}, 文件路径={}", userId, fileKey);
+        if (fileExists(key) && getFileSize(key) == fileSize) {
+            log.info("文件上传确认成功：用户ID={}, 文件路径={}", userId, key);
+            return key;
         } else {
             throw new RuntimeException("文件上传验证失败");
         }
@@ -257,9 +256,10 @@ public class FileServiceImpl implements FileService {
     /**
      * 初始化七牛云配置
      */
+    @SuppressWarnings("deprecation")
     private void initQiniu() {
         if (uploadManager == null) {
-            Configuration config = new Configuration(Region.region0());
+            Configuration config = new Configuration();
             uploadManager = new UploadManager(config);
             auth = Auth.create(accessKey, secretKey);
         }

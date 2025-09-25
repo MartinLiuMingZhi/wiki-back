@@ -9,14 +9,16 @@ import com.xichen.wiki.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -26,12 +28,12 @@ import java.util.Map;
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/search")
-@RequiredArgsConstructor
 @Validated
 @Tag(name = "搜索服务", description = "全局搜索、搜索建议、搜索历史相关接口")
 public class SearchController {
 
-    private final SearchService searchService;
+    @Autowired
+    private SearchService searchService;
 
     @Operation(summary = "全局搜索", description = "搜索文档和电子书")
     @GetMapping
@@ -113,7 +115,8 @@ public class SearchController {
         }
 
         try {
-            List<String> suggestions = searchService.getSearchSuggestions(keyword, limit);
+            String[] suggestionsArray = searchService.getSearchSuggestions(keyword, userId);
+            List<String> suggestions = suggestionsArray != null ? Arrays.asList(suggestionsArray) : Collections.emptyList();
             return Result.success(suggestions);
         } catch (Exception e) {
             log.error("获取搜索建议失败：{}", e.getMessage());
@@ -180,7 +183,17 @@ public class SearchController {
         }
 
         try {
-            Map<String, Object> result = searchService.advancedSearch(request, userId);
+            Map<String, Object> result = searchService.advancedSearch(
+                request.getKeyword(),
+                request.getType(),
+                request.getCategoryId(),
+                null, // tagIds - 暂时设为null，因为AdvancedSearchRequest中没有tagIds字段
+                request.getSortBy(),
+                request.getSortOrder(),
+                userId,
+                1, // page - 默认第1页
+                10 // size - 默认每页10条
+            );
             return Result.success(result);
         } catch (Exception e) {
             log.error("高级搜索失败：{}", e.getMessage());

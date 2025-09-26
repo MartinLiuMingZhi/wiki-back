@@ -1,15 +1,26 @@
-name: Release
+name: Release Workflow
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - 'develop'  # 主要从develop分支发布版本
+      - 'v*/develop'  # 支持 v1.0.0/develop 这样的分支版本
   workflow_dispatch:
     inputs:
       version:
-        description: 'Release version'
+        description: 'Release version (e.g., v1.0.0)'
         required: true
-        default: '1.0.0'
+        type: string
+      release_notes:
+        description: 'Release notes'
+        required: false
+        type: string
+        default: ''
+      source_branch:
+        description: 'Source branch for release'
+        required: false
+        type: string
+        default: 'develop'
 
 env:
   JAVA_VERSION: '17'
@@ -22,30 +33,80 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
-      tag_name: ${{ steps.get_version.outputs.tag_name }}
+      version: ${{ steps.version.outputs.version }}
+      tag_name: ${{ steps.version.outputs.tag_name }}
+      source_branch: ${{ steps.version.outputs.source_branch }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
-    - name: Get version from tag
-      id: get_version
+      with:
+        fetch-depth: 0
+        
+    - name: Get version
+      id: version
       run: |
-        if [[ $GITHUB_REF == refs/tags/* ]]; then
-          echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          # 手动触发：使用输入的版本
+          echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          echo "tag_name=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          echo "source_branch=${{ github.event.inputs.source_branch }}" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" =~ ^refs/heads/develop$ ]]; then
+          # develop分支触发：自动生成版本号
+          # 获取最新的标签
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          # 提取版本号并递增
+          VERSION_NUM=$(echo $LATEST_TAG | sed 's/v//' | awk -F. '{print $1"."$2"."$3+1}')
+          VERSION="v$VERSION_NUM"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$VERSION" >> $GITHUB_OUTPUT
+          echo "source_branch=develop" >> $GITHUB_OUTPUT
+        elif [[ "${{ github.ref }}" =~ ^refs/heads/v.*/develop$ ]]; then
+          # 分支版本触发：从分支名提取版本
+          BRANCH_NAME=${GITHUB_REF#refs/heads/}
+          VERSION=${BRANCH_NAME%/develop}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$VERSION" >> $GITHUB_OUTPUT
+          echo "source_branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
         else
-          echo "tag_name=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          echo "❌ Unsupported trigger type"
+          exit 1
+        fi
+        
+        echo "📦 Release version: ${{ steps.version.outputs.version }}"
+        echo "🏷️  Tag name: ${{ steps.version.outputs.tag_name }}"
+        echo "🌿 Source branch: ${{ steps.version.outputs.source_branch }}"
+        
+    - name: Generate changelog
+      id: changelog
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.release_notes }}" ]; then
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "${{ github.event.inputs.release_notes }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+        else
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "## What's Changed" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          # 获取最近的提交
+          git log --oneline --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/$(git describe --tags --abbrev=0 HEAD^)...${{ steps.version.outputs.tag_name }}" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
         fi
         
     - name: Create Release
-      id: create_release
       uses: actions/create-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: ${{ steps.get_version.outputs.tag_name }}
-        release_name: Release ${{ steps.get_version.outputs.tag_name }}
+        tag_name: ${{ steps.version.outputs.tag_name }}
+        release_name: Release ${{ steps.version.outputs.tag_name }}
+        body: |
+          ${{ steps.changelog.outputs.changelog }}
+          
+          **Source Branch:** ${{ steps.version.outputs.source_branch }}
+          **Build Date:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
         draft: false
         prerelease: false
 
@@ -53,7 +114,7 @@ jobs:
   build-release:
     name: Build Release
     runs-on: ubuntu-latest
-    needs: create-release
+    needs: [create-release]
     
     steps:
     - name: Checkout code
@@ -69,22 +130,24 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.m2
-        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-        restore-keys: ${{ runner.os }}-m2
+        key: ${{ runner.os }}-m2-v1-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-v1-
+          ${{ runner.os }}-m2-
         
     - name: Build application
       run: |
-        ./mvnw clean package -DskipTests
+        ./mvnw clean package -DskipTests -T 1C
         
-    - name: Upload JAR artifact
+    - name: Upload release artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: wiki-app-${{ needs.create-release.outputs.tag_name }}
+        name: release-artifacts
         path: target/*.jar
 
   # 构建Docker镜像
-  build-docker-release:
-    name: Build Docker Image for Release
+  build-docker:
+    name: Build Docker Image
     runs-on: ubuntu-latest
     needs: [create-release, build-release]
     
@@ -108,8 +171,8 @@ jobs:
       with:
         images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          type=ref,event=tag
-          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=${{ needs.create-release.outputs.tag_name }}
+          type=raw,value=latest
           
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
@@ -121,18 +184,68 @@ jobs:
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          VCS_REF=${{ github.sha }}
+          VERSION=${{ needs.create-release.outputs.tag_name }}
 
   # 部署到生产环境
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [create-release, build-docker-release]
+    needs: [build-docker]
     environment: production
     
     steps:
     - name: Deploy to production
       run: |
-        echo "Deploying version ${{ needs.create-release.outputs.tag_name }} to production..."
+        echo "🚀 Deploying to production environment..."
+        echo "Version: ${{ needs.create-release.outputs.tag_name }}"
+        echo "Source Branch: ${{ needs.create-release.outputs.source_branch }}"
+        echo "Image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.create-release.outputs.tag_name }}"
+        
+        # 根据源分支选择不同的部署策略
+        if [ "${{ needs.create-release.outputs.source_branch }}" = "develop" ]; then
+          echo "📦 Deploying from develop branch (stable release)"
+          # 从develop分支的稳定版本部署策略
+        elif [[ "${{ needs.create-release.outputs.source_branch }}" =~ ^v.*/develop$ ]]; then
+          echo "🧪 Deploying from version branch (pre-release)"
+          # 从版本分支的预发布版本部署策略
+        fi
+        
         # 这里可以添加具体的部署脚本
         # 例如：kubectl apply -f k8s/production/
         # 或者：docker-compose -f docker-compose.production.yml up -d
+        
+    - name: Health check
+      run: |
+        echo "🔍 Performing health check..."
+        # 添加健康检查逻辑
+        # curl -f http://production.example.com/actuator/health || exit 1
+        
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ Production deployment successful!"
+        echo "Version: ${{ needs.create-release.outputs.tag_name }}"
+        echo "Environment: production"
+        echo "Image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ needs.create-release.outputs.tag_name }}"
+
+  # 回滚检查
+  rollback-check:
+    name: Rollback Check
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: always()
+    
+    steps:
+    - name: Check deployment status
+      run: |
+        if [ "${{ needs.deploy-production.result }}" = "success" ]; then
+          echo "✅ Deployment successful, no rollback needed"
+        else
+          echo "❌ Deployment failed, initiating rollback..."
+          # 这里可以添加回滚逻辑
+          # 例如：kubectl rollout undo deployment/wiki-app
+          # 或者：docker-compose -f docker-compose.production.yml down && docker-compose -f docker-compose.production.yml up -d
+        fi

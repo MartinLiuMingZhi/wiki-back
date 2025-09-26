@@ -1,13 +1,13 @@
 version: 2
 updates:
-  # Maven依赖更新
+  # Maven依赖更新 - 核心依赖
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     reviewers:
       - "xichen"
     assignees:
@@ -18,19 +18,56 @@ updates:
     labels:
       - "dependencies"
       - "java"
+      - "auto-merge"
+    # 自动合并策略 - 仅允许安全的更新
+    allow:
+      - dependency-type: "direct"
     ignore:
-      # 忽略主要版本更新
+      # 忽略主要版本更新（需要手动审查）
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
+      # 忽略间接依赖（容易产生冲突）
+      - dependency-name: "*"
+        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
+        dependency-type: "indirect"
+      # 忽略核心框架依赖（容易产生兼容性问题）
+      - dependency-name: "org.springframework.boot:spring-boot-starter"
+      - dependency-name: "org.springframework.boot:spring-boot-starter-web"
+      - dependency-name: "org.springframework.boot:spring-boot-starter-security"
+      - dependency-name: "org.springframework.boot:spring-boot-starter-data-redis"
+      - dependency-name: "org.springframework.boot:spring-boot-starter-validation"
+      - dependency-name: "org.springframework.boot:spring-boot-starter-mail"
+      - dependency-name: "org.springframework.boot:spring-boot-starter-test"
+      - dependency-name: "org.springframework.security:spring-security-test"
+      # 忽略数据库相关依赖
+      - dependency-name: "com.mysql:mysql-connector-j"
+      - dependency-name: "com.baomidou:mybatis-plus-spring-boot3-starter"
+      # 忽略JWT相关依赖
+      - dependency-name: "io.jsonwebtoken:jjwt-api"
+      - dependency-name: "io.jsonwebtoken:jjwt-impl"
+      - dependency-name: "io.jsonwebtoken:jjwt-jackson"
+      # 忽略第三方SDK依赖
+      - dependency-name: "com.qiniu:qiniu-java-sdk"
+      - dependency-name: "com.alibaba:fastjson"
+      - dependency-name: "com.github.ulisesbocchio:jasypt-spring-boot-starter"
+      # 忽略开发工具依赖
+      - dependency-name: "com.github.spotbugs:spotbugs-maven-plugin"
+      - dependency-name: "org.apache.maven.plugins:maven-checkstyle-plugin"
+      - dependency-name: "org.apache.maven.plugins:maven-pmd-plugin"
+      - dependency-name: "org.owasp:dependency-check-maven"
+      - dependency-name: "org.jacoco:jacoco-maven-plugin"
+      - dependency-name: "org.apache.maven.plugins:maven-compiler-plugin"
+      - dependency-name: "org.apache.maven.plugins:maven-surefire-plugin"
+      - dependency-name: "org.apache.maven.plugins:maven-failsafe-plugin"
         
   # GitHub Actions更新
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     reviewers:
       - "xichen"
     assignees:
@@ -41,15 +78,23 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
-      
+      - "auto-merge"
+    # 自动合并策略
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      # 忽略主要版本更新
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
   # Docker依赖更新
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "monthly"
       day: "monday"
       time: "09:00"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     reviewers:
       - "xichen"
     assignees:
@@ -60,3 +105,11 @@ updates:
     labels:
       - "dependencies"
       - "docker"
+      - "auto-merge"
+    # 自动合并策略
+    allow:
+      - dependency-type: "direct"
+    ignore:
+      # 忽略主要版本更新
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]

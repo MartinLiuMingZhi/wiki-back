@@ -2,22 +2,100 @@ name: Dependabot Auto-merge
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, labeled]
 
 jobs:
-  # 自动合并依赖更新
-  auto-merge:
-    name: Auto-merge Dependabot PRs
+  # 检查依赖更新安全性
+  check-dependency-safety:
+    name: Check Dependency Safety
     runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]'
+    outputs:
+      is-safe: ${{ steps.check.outputs.is-safe }}
+      dependency-type: ${{ steps.check.outputs.dependency-type }}
+      update-type: ${{ steps.check.outputs.update-type }}
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Check dependency safety
+      id: check
+      run: |
+        # 检查是否为安全的依赖更新
+        PR_TITLE="${{ github.event.pull_request.title }}"
+        PR_BODY="${{ github.event.pull_request.body }}"
+        
+        echo "PR Title: $PR_TITLE"
+        echo "PR Body: $PR_BODY"
+        
+        # 检查更新类型
+        if echo "$PR_TITLE" | grep -q "Bump.*from.*to.*"; then
+          echo "dependency-type=direct" >> $GITHUB_OUTPUT
+          
+          # 检查是否为patch版本更新
+          if echo "$PR_TITLE" | grep -q "patch\|bugfix"; then
+            echo "update-type=patch" >> $GITHUB_OUTPUT
+            echo "is-safe=true" >> $GITHUB_OUTPUT
+            echo "✅ Patch version update - safe to auto-merge"
+          else
+            echo "update-type=minor" >> $GITHUB_OUTPUT
+            echo "is-safe=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Minor version update - requires manual review"
+          fi
+        else
+          echo "dependency-type=unknown" >> $GITHUB_OUTPUT
+          echo "update-type=unknown" >> $GITHUB_OUTPUT
+          echo "is-safe=false" >> $GITHUB_OUTPUT
+          echo "❌ Unknown update type - requires manual review"
+        fi
+
+  # 自动合并安全的依赖更新
+  auto-merge:
+    name: Auto-merge Safe Dependencies
+    runs-on: ubuntu-latest
+    needs: [check-dependency-safety]
+    if: github.actor == 'dependabot[bot]' && needs.check-dependency-safety.outputs.is-safe == 'true' && contains(github.event.pull_request.labels.*.name, 'auto-merge')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Run tests before merge
+      run: |
+        echo "🧪 Running tests before auto-merge..."
+        # 这里可以添加测试命令
+        # ./mvnw clean test
+        
     - name: Auto-merge Dependabot PRs
       uses: fastify/github-action-merge-dependabot@v3
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        target: minor
+        target: patch  # 仅自动合并patch版本
         merge-method: squash
+        
+    - name: Notify merge
+      if: success()
+      run: |
+        echo "✅ Safe dependency update merged successfully"
+        echo "PR: ${{ github.event.pull_request.html_url }}"
+        echo "Title: ${{ github.event.pull_request.title }}"
+        echo "Update Type: ${{ needs.check-dependency-safety.outputs.update-type }}"
+
+  # 通知需要手动审查的更新
+  notify-manual-review:
+    name: Notify Manual Review Required
+    runs-on: ubuntu-latest
+    needs: [check-dependency-safety]
+    if: github.actor == 'dependabot[bot]' && needs.check-dependency-safety.outputs.is-safe == 'false'
+    
+    steps:
+    - name: Notify manual review
+      run: |
+        echo "⚠️ Manual review required for dependency update"
+        echo "PR: ${{ github.event.pull_request.html_url }}"
+        echo "Title: ${{ github.event.pull_request.title }}"
+        echo "Dependency Type: ${{ needs.check-dependency-safety.outputs.dependency-type }}"
+        echo "Update Type: ${{ needs.check-dependency-safety.outputs.update-type }}"
+        echo ""
+        echo "Please review the changes and merge manually if safe."

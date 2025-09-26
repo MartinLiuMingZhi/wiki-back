@@ -1,0 +1,241 @@
+name: Main Branch Management
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened ]
+
+env:
+  JAVA_VERSION: '17'
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # 代码质量检查
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-v1-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-v1-
+          ${{ runner.os }}-m2-
+        
+    - name: Run code quality checks
+      run: |
+        ./mvnw clean compile -T 1C
+        ./mvnw spotbugs:check -T 1C
+        ./mvnw checkstyle:check -T 1C
+        ./mvnw pmd:check -T 1C
+        
+    - name: Upload code quality reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: code-quality-reports
+        path: |
+          target/spotbugsXml.xml
+          target/checkstyle-results.xml
+          target/pmd.xml
+
+  # 单元测试
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root123456
+          MYSQL_DATABASE: wiki_test
+          MYSQL_USER: wiki_test
+          MYSQL_PASSWORD: wiki_test123456
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+          
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-v1-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-v1-
+          ${{ runner.os }}-m2-
+        
+    - name: Wait for services
+      run: |
+        echo "Waiting for MySQL to be ready..."
+        timeout 60 bash -c 'until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"root123456" --silent; do sleep 1; done'
+        echo "Waiting for Redis to be ready..."
+        timeout 60 bash -c 'until redis-cli -h 127.0.0.1 -p 6379 ping; do sleep 1; done'
+        
+    - name: Run unit tests
+      run: |
+        ./mvnw clean test -T 1C
+      env:
+        SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/wiki_test?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+        SPRING_DATASOURCE_USERNAME: wiki_test
+        SPRING_DATASOURCE_PASSWORD: wiki_test123456
+        SPRING_DATA_REDIS_HOST: 127.0.0.1
+        SPRING_DATA_REDIS_PORT: 6379
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: target/surefire-reports/
+
+  # 安全扫描
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-v1-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-v1-
+          ${{ runner.os }}-m2-
+        
+    - name: Run OWASP dependency check
+      run: |
+        ./mvnw org.owasp:dependency-check-maven:check -T 1C
+        
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-scan-results
+        path: target/dependency-check-report.html
+
+  # 构建Docker镜像 (仅用于验证，不部署)
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests, security-scan]
+    if: github.event_name == 'push'
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=sha,prefix={{branch}}-
+          
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          VCS_REF=${{ github.sha }}
+          VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+
+  # 通知状态
+  notify-status:
+    name: Notify Status
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests, security-scan, build-docker]
+    if: always()
+    
+    steps:
+    - name: Notify success
+      if: needs.code-quality.result == 'success' && needs.unit-tests.result == 'success' && needs.security-scan.result == 'success'
+      run: |
+        echo "✅ All checks passed! Main branch is ready."
+        echo "Code Quality: ✅"
+        echo "Unit Tests: ✅"
+        echo "Security Scan: ✅"
+        echo ""
+        echo "📝 Note: Main branch is for code management only."
+        echo "🚀 For version releases, use develop branch."
+        
+    - name: Notify failure
+      if: needs.code-quality.result == 'failure' || needs.unit-tests.result == 'failure' || needs.security-scan.result == 'failure'
+      run: |
+        echo "❌ Some checks failed. Please fix the issues before merging."
+        echo "Code Quality: ${{ needs.code-quality.result }}"
+        echo "Unit Tests: ${{ needs.unit-tests.result }}"
+        echo "Security Scan: ${{ needs.security-scan.result }}"
+        exit 1

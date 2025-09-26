@@ -1,6 +1,8 @@
 package com.xichen.wiki.controller;
 
 import com.xichen.wiki.common.Result;
+import com.xichen.wiki.dto.CreateCategoryRequest;
+import com.xichen.wiki.dto.UpdateCategoryRequest;
 import com.xichen.wiki.entity.Category;
 import com.xichen.wiki.service.CategoryService;
 import com.xichen.wiki.util.JwtUtil;
@@ -127,40 +129,4 @@ public class CategoryController {
         return Result.success("删除成功");
     }
 
-    /**
-     * 创建分类请求DTO
-     */
-    public static class CreateCategoryRequest {
-        @NotBlank(message = "分类名称不能为空")
-        private String name;
-        
-        private Long parentId;
-        
-        @NotBlank(message = "分类类型不能为空")
-        private String type;
-        
-        // Getters and Setters
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-        public Long getParentId() { return parentId; }
-        public void setParentId(Long parentId) { this.parentId = parentId; }
-        public String getType() { return type; }
-        public void setType(String type) { this.type = type; }
-    }
-
-    /**
-     * 更新分类请求DTO
-     */
-    public static class UpdateCategoryRequest {
-        @NotBlank(message = "分类名称不能为空")
-        private String name;
-        
-        private Long parentId;
-        
-        // Getters and Setters
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-        public Long getParentId() { return parentId; }
-        public void setParentId(Long parentId) { this.parentId = parentId; }
-    }
 }

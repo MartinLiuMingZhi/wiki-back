@@ -2,9 +2,12 @@ package com.xichen.wiki.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xichen.wiki.common.Result;
+import com.xichen.wiki.dto.BatchDeleteBookmarkRequest;
+import com.xichen.wiki.dto.CreateBookmarkRequest;
+import com.xichen.wiki.dto.UpdateBookmarkRequest;
 import com.xichen.wiki.entity.Bookmark;
 import com.xichen.wiki.service.BookmarkService;
-import com.xichen.wiki.util.UserContext;
+import com.xichen.wiki.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -31,11 +34,14 @@ public class BookmarkController {
 
     @Autowired
     private BookmarkService bookmarkService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Operation(summary = "创建书签", description = "为电子书创建书签")
     @PostMapping
-    public Result<Bookmark> createBookmark(@Valid @RequestBody CreateBookmarkRequest request) {
-        Long userId = UserContext.getCurrentUserId();
+    public Result<Bookmark> createBookmark(@RequestHeader("Authorization") String token, @Valid @RequestBody CreateBookmarkRequest request) {
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -57,10 +63,11 @@ public class BookmarkController {
     @Operation(summary = "更新书签", description = "更新书签内容")
     @PutMapping("/{id}")
     public Result<Bookmark> updateBookmark(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "书签ID") @PathVariable @NotNull Long id,
             @Valid @RequestBody UpdateBookmarkRequest request) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -77,9 +84,10 @@ public class BookmarkController {
     @Operation(summary = "获取书签详情", description = "获取指定书签的详细信息")
     @GetMapping("/{id}")
     public Result<Bookmark> getBookmarkDetail(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "书签ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -99,11 +107,12 @@ public class BookmarkController {
     @Operation(summary = "获取用户书签列表", description = "分页获取用户的所有书签")
     @GetMapping
     public Result<Page<Bookmark>> getUserBookmarks(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
             @Parameter(description = "电子书ID") @RequestParam(required = false) Long ebookId) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -120,9 +129,10 @@ public class BookmarkController {
     @Operation(summary = "获取电子书书签", description = "获取指定电子书的所有书签")
     @GetMapping("/ebook/{ebookId}")
     public Result<List<Bookmark>> getEbookBookmarks(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long ebookId) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -139,9 +149,10 @@ public class BookmarkController {
     @Operation(summary = "删除书签", description = "删除指定的书签")
     @DeleteMapping("/{id}")
     public Result<Object> deleteBookmark(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "书签ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -157,8 +168,8 @@ public class BookmarkController {
 
     @Operation(summary = "批量删除书签", description = "批量删除多个书签")
     @DeleteMapping("/batch")
-    public Result<Object> deleteBookmarks(@Valid @RequestBody BatchDeleteRequest request) {
-        Long userId = UserContext.getCurrentUserId();
+    public Result<Object> deleteBookmarks(@RequestHeader("Authorization") String token, @Valid @RequestBody BatchDeleteBookmarkRequest request) {
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -175,11 +186,12 @@ public class BookmarkController {
     @Operation(summary = "搜索书签", description = "根据关键词搜索书签")
     @GetMapping("/search")
     public Result<Page<Bookmark>> searchBookmarks(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -197,8 +209,8 @@ public class BookmarkController {
 
     @Operation(summary = "获取书签统计", description = "获取用户书签统计信息")
     @GetMapping("/statistics")
-    public Result<Object> getBookmarkStatistics() {
-        Long userId = UserContext.getCurrentUserId();
+    public Result<Object> getBookmarkStatistics(@RequestHeader("Authorization") String token) {
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -213,50 +225,4 @@ public class BookmarkController {
         }
     }
 
-    // ==================== 请求DTO类 ====================
-
-    /**
-     * 创建书签请求
-     */
-    public static class CreateBookmarkRequest {
-        @NotNull(message = "电子书ID不能为空")
-        private Long ebookId;
-        
-        @NotNull(message = "页码不能为空")
-        @Min(value = 1, message = "页码必须大于0")
-        private Integer pageNumber;
-        
-        private String note;
-        
-        // Getters and Setters
-        public Long getEbookId() { return ebookId; }
-        public void setEbookId(Long ebookId) { this.ebookId = ebookId; }
-        public Integer getPageNumber() { return pageNumber; }
-        public void setPageNumber(Integer pageNumber) { this.pageNumber = pageNumber; }
-        public String getNote() { return note; }
-        public void setNote(String note) { this.note = note; }
-    }
-
-    /**
-     * 更新书签请求
-     */
-    public static class UpdateBookmarkRequest {
-        private String note;
-        
-        // Getters and Setters
-        public String getNote() { return note; }
-        public void setNote(String note) { this.note = note; }
-    }
-
-    /**
-     * 批量删除请求
-     */
-    public static class BatchDeleteRequest {
-        @NotNull(message = "书签ID列表不能为空")
-        private List<Long> bookmarkIds;
-        
-        // Getters and Setters
-        public List<Long> getBookmarkIds() { return bookmarkIds; }
-        public void setBookmarkIds(List<Long> bookmarkIds) { this.bookmarkIds = bookmarkIds; }
-    }
 }

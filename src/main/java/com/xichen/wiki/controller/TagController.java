@@ -2,9 +2,12 @@ package com.xichen.wiki.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xichen.wiki.common.Result;
+import com.xichen.wiki.dto.BatchDeleteRequest;
+import com.xichen.wiki.dto.CreateTagRequest;
+import com.xichen.wiki.dto.UpdateTagRequest;
 import com.xichen.wiki.entity.Tag;
 import com.xichen.wiki.service.TagService;
-import com.xichen.wiki.util.UserContext;
+import com.xichen.wiki.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import lombok.extern.slf4j.Slf4j;
@@ -31,11 +34,14 @@ public class TagController {
 
     @Autowired
     private TagService tagService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Operation(summary = "创建标签", description = "创建新的标签")
     @PostMapping
-    public Result<Tag> createTag(@Valid @RequestBody CreateTagRequest request) {
-        Long userId = UserContext.getCurrentUserId();
+    public Result<Tag> createTag(@RequestHeader("Authorization") String token, @Valid @RequestBody CreateTagRequest request) {
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -52,10 +58,11 @@ public class TagController {
     @Operation(summary = "更新标签", description = "更新标签信息")
     @PutMapping("/{id}")
     public Result<Tag> updateTag(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "标签ID") @PathVariable @NotNull Long id,
             @Valid @RequestBody UpdateTagRequest request) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -72,9 +79,10 @@ public class TagController {
     @Operation(summary = "获取标签详情", description = "获取指定标签的详细信息")
     @GetMapping("/{id}")
     public Result<Map<String, Object>> getTagDetail(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -94,11 +102,12 @@ public class TagController {
     @Operation(summary = "获取用户标签列表", description = "分页获取用户的所有标签")
     @GetMapping
     public Result<Page<Tag>> getUserTags(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
             @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -131,6 +140,7 @@ public class TagController {
     @Operation(summary = "获取热门标签", description = "获取使用频率最高的标签")
     @GetMapping("/popular")
     public Result<List<Tag>> getPopularTags(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit) {
         
         try {
@@ -145,10 +155,11 @@ public class TagController {
     @Operation(summary = "搜索标签", description = "根据关键词搜索标签")
     @GetMapping("/search")
     public Result<List<Tag>> searchTags(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -165,9 +176,10 @@ public class TagController {
     @Operation(summary = "删除标签", description = "删除指定的标签")
     @DeleteMapping("/{id}")
     public Result<Object> deleteTag(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -183,8 +195,8 @@ public class TagController {
 
     @Operation(summary = "批量删除标签", description = "批量删除多个标签")
     @DeleteMapping("/batch")
-    public Result<Object> deleteTags(@Valid @RequestBody BatchDeleteRequest request) {
-        Long userId = UserContext.getCurrentUserId();
+    public Result<Object> deleteTags(@RequestHeader("Authorization") String token, @Valid @RequestBody BatchDeleteRequest request) {
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -201,9 +213,10 @@ public class TagController {
     @Operation(summary = "获取标签使用统计", description = "获取标签的使用次数统计")
     @GetMapping("/{id}/usage")
     public Result<Map<String, Object>> getTagUsage(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -223,8 +236,8 @@ public class TagController {
 
     @Operation(summary = "获取标签统计", description = "获取用户标签统计信息")
     @GetMapping("/statistics")
-    public Result<Map<String, Object>> getTagStatistics() {
-        Long userId = UserContext.getCurrentUserId();
+    public Result<Map<String, Object>> getTagStatistics(@RequestHeader("Authorization") String token) {
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -244,49 +257,4 @@ public class TagController {
         }
     }
 
-    // ==================== 请求DTO类 ====================
-
-    /**
-     * 创建标签请求
-     */
-    public static class CreateTagRequest {
-        @NotBlank(message = "标签名称不能为空")
-        private String name;
-        
-        private String description;
-        
-        // Getters and Setters
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
-    }
-
-    /**
-     * 更新标签请求
-     */
-    public static class UpdateTagRequest {
-        @NotBlank(message = "标签名称不能为空")
-        private String name;
-        
-        private String description;
-        
-        // Getters and Setters
-        public String getName() { return name; }
-        public void setName(String name) { this.name = name; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
-    }
-
-    /**
-     * 批量删除请求
-     */
-    public static class BatchDeleteRequest {
-        @NotNull(message = "标签ID列表不能为空")
-        private List<Long> tagIds;
-        
-        // Getters and Setters
-        public List<Long> getTagIds() { return tagIds; }
-        public void setTagIds(List<Long> tagIds) { this.tagIds = tagIds; }
-    }
 }

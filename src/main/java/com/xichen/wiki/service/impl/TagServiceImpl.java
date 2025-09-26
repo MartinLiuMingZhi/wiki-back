@@ -7,6 +7,7 @@ import com.xichen.wiki.entity.Tag;
 import com.xichen.wiki.exception.BusinessException;
 import com.xichen.wiki.mapper.TagMapper;
 import com.xichen.wiki.service.TagService;
+import com.xichen.wiki.util.RedisKeyUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    private static final String TAG_USAGE_COUNT_KEY = "tag:usage_count:";
+    // Redis键常量已移至RedisKeyUtil统一管理
 
     @Override
     public Tag createTag(Long userId, String name, String description) {
@@ -149,7 +150,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
         removeById(tagId);
         
         // 清理相关缓存
-        redisTemplate.delete(TAG_USAGE_COUNT_KEY + tagId);
+        redisTemplate.delete(RedisKeyUtil.getTagUsageCountKey(tagId));
         
         log.info("标签删除成功：ID={}, 用户ID={}", tagId, userId);
         return true;
@@ -200,7 +201,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
     @Override
     public Integer getTagUsageCount(Long tagId) {
         // 先从Redis获取
-        String key = TAG_USAGE_COUNT_KEY + tagId;
+        String key = RedisKeyUtil.getTagUsageCountKey(tagId);
         Object count = redisTemplate.opsForValue().get(key);
         
         if (count != null) {
@@ -232,7 +233,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
      * 增加标签使用次数
      */
     public void incrementTagUsage(Long tagId) {
-        String key = TAG_USAGE_COUNT_KEY + tagId;
+        String key = RedisKeyUtil.getTagUsageCountKey(tagId);
         redisTemplate.opsForValue().increment(key, 1);
         redisTemplate.expire(key, 1, TimeUnit.HOURS);
         
@@ -245,7 +246,7 @@ public class TagServiceImpl extends ServiceImpl<TagMapper, Tag> implements TagSe
      * 减少标签使用次数
      */
     public void decrementTagUsage(Long tagId) {
-        String key = TAG_USAGE_COUNT_KEY + tagId;
+        String key = RedisKeyUtil.getTagUsageCountKey(tagId);
         redisTemplate.opsForValue().increment(key, -1);
         redisTemplate.expire(key, 1, TimeUnit.HOURS);
         

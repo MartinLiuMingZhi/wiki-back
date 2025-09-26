@@ -7,6 +7,7 @@ import com.xichen.wiki.entity.Ebook;
 import com.xichen.wiki.service.DocumentService;
 import com.xichen.wiki.service.EbookService;
 import com.xichen.wiki.service.SearchService;
+import com.xichen.wiki.util.RedisKeyUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,9 +36,7 @@ public class SearchServiceImpl implements SearchService {
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    private static final String SEARCH_HISTORY_KEY = "search:history:user:";
-    private static final String POPULAR_SEARCH_KEY = "search:popular";
-    private static final String SEARCH_SUGGESTION_KEY = "search:suggestion:";
+    // Redis键常量已移至RedisKeyUtil统一管理
 
     @Override
     public Map<String, Object> globalSearch(String keyword, String type, Long userId, Integer page, Integer size) {
@@ -101,7 +100,7 @@ public class SearchServiceImpl implements SearchService {
 
     public List<String> getPopularSearchTerms(Integer limit) {
         Set<Object> popularTerms = redisTemplate.opsForZSet()
-                .reverseRange(POPULAR_SEARCH_KEY, 0, limit - 1);
+                .reverseRange(RedisKeyUtil.getPopularSearchTermsKey(), 0, limit - 1);
 
         return popularTerms.stream()
                 .map(Object::toString)
@@ -113,7 +112,7 @@ public class SearchServiceImpl implements SearchService {
             return;
         }
         
-        String key = SEARCH_HISTORY_KEY + userId;
+        String key = RedisKeyUtil.getSearchHistoryKey(userId);
         
         // 记录搜索历史
         Map<String, Object> historyItem = new HashMap<>();
@@ -126,11 +125,11 @@ public class SearchServiceImpl implements SearchService {
         redisTemplate.expire(key, 30, TimeUnit.DAYS);
         
         // 更新热门搜索词
-        redisTemplate.opsForZSet().incrementScore(POPULAR_SEARCH_KEY, keyword, 1);
-        redisTemplate.expire(POPULAR_SEARCH_KEY, 30, TimeUnit.DAYS);
+        redisTemplate.opsForZSet().incrementScore(RedisKeyUtil.getPopularSearchTermsKey(), keyword, 1);
+        redisTemplate.expire(RedisKeyUtil.getPopularSearchTermsKey(), 30, TimeUnit.DAYS);
         
         // 更新搜索建议
-        String suggestionKey = SEARCH_SUGGESTION_KEY + keyword.toLowerCase();
+        String suggestionKey = "search:suggestion:" + keyword.toLowerCase();
         redisTemplate.opsForZSet().incrementScore(suggestionKey, keyword, 1);
         redisTemplate.expire(suggestionKey, 7, TimeUnit.DAYS);
         
@@ -138,7 +137,7 @@ public class SearchServiceImpl implements SearchService {
     }
 
     public List<Map<String, Object>> getUserSearchHistory(Long userId, Integer limit) {
-        String key = SEARCH_HISTORY_KEY + userId;
+        String key = RedisKeyUtil.getSearchHistoryKey(userId);
         List<Object> history = redisTemplate.opsForList().range(key, 0, limit - 1);
         
         if (history == null) {
@@ -155,7 +154,7 @@ public class SearchServiceImpl implements SearchService {
     }
 
     public void clearUserSearchHistory(Long userId) {
-        String key = SEARCH_HISTORY_KEY + userId;
+        String key = RedisKeyUtil.getSearchHistoryKey(userId);
         redisTemplate.delete(key);
         log.info("用户搜索历史已清空：用户ID={}", userId);
     }
@@ -165,27 +164,190 @@ public class SearchServiceImpl implements SearchService {
                                               String sortBy, String sortOrder, Long userId, Integer page, Integer size) {
         Map<String, Object> result = new HashMap<>();
         
-        // 实现高级搜索逻辑
-        if (StringUtils.isNotBlank(keyword)) {
-            // 根据类型搜索
-            if ("document".equals(type)) {
-                result.put("documents", searchDocuments(keyword, userId, page, size));
-            } else if ("ebook".equals(type)) {
-                result.put("ebooks", searchEbooks(keyword, userId, page, size));
-            } else {
-                // 全局搜索
-                result.put("documents", searchDocuments(keyword, userId, page, size));
-                result.put("ebooks", searchEbooks(keyword, userId, page, size));
-            }
+        // 记录搜索历史
+        recordSearchHistory(userId, keyword, type);
+        
+        // 根据类型进行高级搜索
+        if ("document".equals(type)) {
+            Page<Document> documents = advancedSearchDocuments(keyword, categoryId, tagIds, sortBy, sortOrder, userId, page, size);
+            result.put("documents", documents);
+            result.put("total", documents.getTotal());
+        } else if ("ebook".equals(type)) {
+            Page<Ebook> ebooks = advancedSearchEbooks(keyword, categoryId, sortBy, sortOrder, userId, page, size);
+            result.put("ebooks", ebooks);
+            result.put("total", ebooks.getTotal());
+        } else {
+            // 全局高级搜索
+            Page<Document> documents = advancedSearchDocuments(keyword, categoryId, tagIds, sortBy, sortOrder, userId, page, size);
+            Page<Ebook> ebooks = advancedSearchEbooks(keyword, categoryId, sortBy, sortOrder, userId, page, size);
+            
+            result.put("documents", documents);
+            result.put("ebooks", ebooks);
+            result.put("total", documents.getTotal() + ebooks.getTotal());
         }
         
         result.put("keyword", keyword);
         result.put("type", type);
-        result.put("userId", userId);
-        result.put("page", page);
-        result.put("size", size);
+        result.put("categoryId", categoryId);
+        result.put("tagIds", tagIds);
+        result.put("sortBy", sortBy);
+        result.put("sortOrder", sortOrder);
+        
+        log.info("高级搜索完成：用户ID={}, 关键词={}, 类型={}, 分类ID={}, 标签IDs={}", 
+                userId, keyword, type, categoryId, Arrays.toString(tagIds));
         
         return result;
+    }
+    
+    /**
+     * 高级文档搜索
+     */
+    private Page<Document> advancedSearchDocuments(String keyword, Long categoryId, Long[] tagIds, 
+                                                  String sortBy, String sortOrder, Long userId, Integer page, Integer size) {
+        Page<Document> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<Document> wrapper = new LambdaQueryWrapper<>();
+        
+        // 基础条件：用户ID
+        wrapper.eq(Document::getUserId, userId);
+        
+        // 关键词搜索
+        if (StringUtils.isNotBlank(keyword)) {
+            wrapper.and(w -> w.like(Document::getTitle, keyword)
+                    .or().like(Document::getContent, keyword));
+        }
+        
+        // 分类筛选
+        if (categoryId != null) {
+            wrapper.eq(Document::getCategoryId, categoryId);
+        }
+        
+        // 标签筛选（需要关联查询）
+        if (tagIds != null && tagIds.length > 0) {
+            // 这里需要根据document_tags表进行关联查询
+            // 暂时简化处理，实际应该使用JOIN查询
+            wrapper.in(Document::getId, getDocumentIdsByTags(tagIds));
+        }
+        
+        // 排序
+        applyDocumentSorting(wrapper, sortBy, sortOrder);
+        
+        return documentService.page(pageParam, wrapper);
+    }
+    
+    /**
+     * 高级电子书搜索
+     */
+    private Page<Ebook> advancedSearchEbooks(String keyword, Long categoryId, String sortBy, String sortOrder, 
+                                             Long userId, Integer page, Integer size) {
+        Page<Ebook> pageParam = new Page<>(page, size);
+        LambdaQueryWrapper<Ebook> wrapper = new LambdaQueryWrapper<>();
+        
+        // 基础条件：用户ID
+        wrapper.eq(Ebook::getUserId, userId);
+        
+        // 关键词搜索
+        if (StringUtils.isNotBlank(keyword)) {
+            wrapper.and(w -> w.like(Ebook::getTitle, keyword)
+                    .or().like(Ebook::getAuthor, keyword)
+                    .or().like(Ebook::getDescription, keyword));
+        }
+        
+        // 分类筛选
+        if (categoryId != null) {
+            wrapper.eq(Ebook::getCategoryId, categoryId);
+        }
+        
+        // 排序
+        applyEbookSorting(wrapper, sortBy, sortOrder);
+        
+        return ebookService.page(pageParam, wrapper);
+    }
+    
+    /**
+     * 应用文档排序规则
+     */
+    private void applyDocumentSorting(LambdaQueryWrapper<Document> wrapper, String sortBy, String sortOrder) {
+        if (StringUtils.isBlank(sortBy)) {
+            sortBy = "created_at";
+        }
+        if (StringUtils.isBlank(sortOrder)) {
+            sortOrder = "desc";
+        }
+        
+        boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+        
+        switch (sortBy.toLowerCase()) {
+            case "title":
+                if (isAsc) {
+                    wrapper.orderByAsc(Document::getTitle);
+                } else {
+                    wrapper.orderByDesc(Document::getTitle);
+                }
+                break;
+            case "updated_at":
+                if (isAsc) {
+                    wrapper.orderByAsc(Document::getUpdatedAt);
+                } else {
+                    wrapper.orderByDesc(Document::getUpdatedAt);
+                }
+                break;
+            case "created_at":
+            default:
+                if (isAsc) {
+                    wrapper.orderByAsc(Document::getCreatedAt);
+                } else {
+                    wrapper.orderByDesc(Document::getCreatedAt);
+                }
+                break;
+        }
+    }
+    
+    /**
+     * 应用电子书排序规则
+     */
+    private void applyEbookSorting(LambdaQueryWrapper<Ebook> wrapper, String sortBy, String sortOrder) {
+        if (StringUtils.isBlank(sortBy)) {
+            sortBy = "created_at";
+        }
+        if (StringUtils.isBlank(sortOrder)) {
+            sortOrder = "desc";
+        }
+        
+        boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+        
+        switch (sortBy.toLowerCase()) {
+            case "title":
+                if (isAsc) {
+                    wrapper.orderByAsc(Ebook::getTitle);
+                } else {
+                    wrapper.orderByDesc(Ebook::getTitle);
+                }
+                break;
+            case "updated_at":
+                if (isAsc) {
+                    wrapper.orderByAsc(Ebook::getUpdatedAt);
+                } else {
+                    wrapper.orderByDesc(Ebook::getUpdatedAt);
+                }
+                break;
+            case "created_at":
+            default:
+                if (isAsc) {
+                    wrapper.orderByAsc(Ebook::getCreatedAt);
+                } else {
+                    wrapper.orderByDesc(Ebook::getCreatedAt);
+                }
+                break;
+        }
+    }
+    
+    /**
+     * 根据标签获取文档ID列表
+     */
+    private List<Long> getDocumentIdsByTags(Long[] tagIds) {
+        // 这里应该查询document_tags表获取关联的文档ID
+        // 暂时返回空列表，实际应该实现数据库查询
+        return new ArrayList<>();
     }
     
     @Override

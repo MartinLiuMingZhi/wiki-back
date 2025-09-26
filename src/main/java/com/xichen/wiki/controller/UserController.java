@@ -8,7 +8,6 @@ import com.xichen.wiki.dto.UserUpdateRequest;
 import com.xichen.wiki.entity.User;
 import com.xichen.wiki.service.UserService;
 import com.xichen.wiki.util.JwtUtil;
-import com.xichen.wiki.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,9 +40,9 @@ public class UserController {
 
     @Operation(summary = "获取当前用户信息", description = "获取当前登录用户的详细信息")
     @GetMapping("/me")
-    public Result<Map<String, Object>> getCurrentUser() {
+    public Result<Map<String, Object>> getCurrentUser(@RequestHeader("Authorization") String token) {
         // 从JWT token中解析用户ID
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -68,9 +67,9 @@ public class UserController {
 
     @Operation(summary = "更新用户信息", description = "更新当前用户的基本信息")
     @PutMapping("/me")
-    public Result<Map<String, Object>> updateCurrentUser(@Valid @RequestBody UserUpdateRequest request) {
+    public Result<Map<String, Object>> updateCurrentUser(@RequestHeader("Authorization") String token, @Valid @RequestBody UserUpdateRequest request) {
         // 从JWT token中解析用户ID
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }

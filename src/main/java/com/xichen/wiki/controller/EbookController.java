@@ -2,9 +2,11 @@ package com.xichen.wiki.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xichen.wiki.common.Result;
+import com.xichen.wiki.dto.ReadingProgressRequest;
+import com.xichen.wiki.dto.UpdateEbookRequest;
 import com.xichen.wiki.entity.Ebook;
 import com.xichen.wiki.service.EbookService;
-import com.xichen.wiki.util.UserContext;
+import com.xichen.wiki.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,17 +35,21 @@ public class EbookController {
 
     @Autowired
     private EbookService ebookService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Operation(summary = "上传电子书", description = "上传PDF电子书文件")
     @PostMapping("/upload")
     public Result<Ebook> uploadEbook(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书文件") @RequestParam("file") @NotNull MultipartFile file,
             @Parameter(description = "电子书标题") @RequestParam @NotBlank String title,
             @Parameter(description = "作者") @RequestParam(required = false) String author,
             @Parameter(description = "描述") @RequestParam(required = false) String description,
             @Parameter(description = "分类ID") @RequestParam(required = false) Long categoryId) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -60,12 +66,13 @@ public class EbookController {
     @Operation(summary = "获取电子书列表", description = "分页获取用户的电子书列表")
     @GetMapping
     public Result<Page<Ebook>> getEbooks(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
             @Parameter(description = "分类ID") @RequestParam(required = false) Long categoryId,
             @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -77,9 +84,10 @@ public class EbookController {
     @Operation(summary = "获取电子书详情", description = "获取指定电子书的详细信息")
     @GetMapping("/{id}")
     public Result<Ebook> getEbookDetail(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -95,10 +103,11 @@ public class EbookController {
     @Operation(summary = "更新电子书信息", description = "更新电子书的基本信息")
     @PutMapping("/{id}")
     public Result<Ebook> updateEbook(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long id,
             @Valid @RequestBody UpdateEbookRequest request) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -116,9 +125,10 @@ public class EbookController {
     @Operation(summary = "删除电子书", description = "删除指定的电子书")
     @DeleteMapping("/{id}")
     public Result<Object> deleteEbook(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -135,10 +145,11 @@ public class EbookController {
     @Operation(summary = "更新阅读进度", description = "更新电子书的阅读进度")
     @PutMapping("/{id}/progress")
     public Result<Object> updateReadingProgress(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long id,
             @Valid @RequestBody ReadingProgressRequest request) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -155,9 +166,10 @@ public class EbookController {
     @Operation(summary = "获取阅读进度", description = "获取电子书的阅读进度")
     @GetMapping("/{id}/progress")
     public Result<Map<String, Object>> getReadingProgress(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -169,9 +181,10 @@ public class EbookController {
     @Operation(summary = "收藏电子书", description = "收藏或取消收藏电子书")
     @PostMapping("/{id}/favorite")
     public Result<Object> favoriteEbook(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -188,9 +201,10 @@ public class EbookController {
     @Operation(summary = "取消收藏电子书", description = "取消收藏电子书")
     @DeleteMapping("/{id}/favorite")
     public Result<Object> unfavoriteEbook(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -207,10 +221,11 @@ public class EbookController {
     @Operation(summary = "获取收藏的电子书", description = "获取用户收藏的电子书列表")
     @GetMapping("/favorites")
     public Result<Page<Ebook>> getFavoriteEbooks(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -222,11 +237,12 @@ public class EbookController {
     @Operation(summary = "搜索电子书", description = "搜索电子书")
     @GetMapping("/search")
     public Result<Page<Ebook>> searchEbooks(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
         
-        Long userId = UserContext.getCurrentUserId();
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
         }
@@ -235,44 +251,4 @@ public class EbookController {
         return Result.success(ebooks);
     }
 
-    // ==================== 请求DTO类 ====================
-
-    /**
-     * 更新电子书请求
-     */
-    public static class UpdateEbookRequest {
-        @NotBlank(message = "标题不能为空")
-        private String title;
-        
-        private String author;
-        private String description;
-        private Long categoryId;
-        
-        // Getters and Setters
-        public String getTitle() { return title; }
-        public void setTitle(String title) { this.title = title; }
-        public String getAuthor() { return author; }
-        public void setAuthor(String author) { this.author = author; }
-        public String getDescription() { return description; }
-        public void setDescription(String description) { this.description = description; }
-        public Long getCategoryId() { return categoryId; }
-        public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
-    }
-
-    /**
-     * 阅读进度请求
-     */
-    public static class ReadingProgressRequest {
-        @NotNull(message = "阅读进度不能为空")
-        @Min(value = 0, message = "阅读进度不能小于0")
-        private Integer progress;
-        
-        private Integer pageNumber;
-        
-        // Getters and Setters
-        public Integer getProgress() { return progress; }
-        public void setProgress(Integer progress) { this.progress = progress; }
-        public Integer getPageNumber() { return pageNumber; }
-        public void setPageNumber(Integer pageNumber) { this.pageNumber = pageNumber; }
-    }
 }

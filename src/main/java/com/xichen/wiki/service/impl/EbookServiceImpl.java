@@ -8,6 +8,7 @@ import com.xichen.wiki.exception.BusinessException;
 import com.xichen.wiki.mapper.EbookMapper;
 import com.xichen.wiki.service.EbookService;
 import com.xichen.wiki.service.FileService;
+import com.xichen.wiki.util.RedisKeyUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -21,7 +22,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -38,9 +38,7 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
-    private static final String EBOOK_FAVORITE_KEY = "ebook:favorite:"; // userId -> Set<ebookId>
-    private static final String EBOOK_READING_PROGRESS_KEY = "ebook:reading_progress:"; // userId:ebookId -> progress
-    private static final String EBOOK_VIEW_COUNT_KEY = "ebook:view_count:";
+    // Redis键常量已移至RedisKeyUtil统一管理
 
     @Override
     public Ebook createEbook(Long userId, String title, String description, String coverUrl) {
@@ -143,8 +141,8 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
         removeById(ebookId);
         
         // 清理相关缓存
-        redisTemplate.delete(EBOOK_FAVORITE_KEY + userId);
-        redisTemplate.delete(EBOOK_READING_PROGRESS_KEY + userId + ":" + ebookId);
+        redisTemplate.delete(RedisKeyUtil.getEbookFavoriteKey(userId));
+        redisTemplate.delete(RedisKeyUtil.getEbookReadingProgressKey(userId, ebookId));
         
         log.info("电子书删除成功：ID={}, 用户ID={}", ebookId, userId);
         return true;
@@ -166,7 +164,7 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
         updateById(ebook);
         
         // 更新Redis缓存
-        String key = EBOOK_READING_PROGRESS_KEY + userId + ":" + ebookId;
+        String key = RedisKeyUtil.getEbookReadingProgressKey(userId, ebookId);
         Map<String, Object> progressData = new HashMap<>();
         progressData.put("currentPage", currentPage);
         progressData.put("totalPages", totalPages);
@@ -195,7 +193,7 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
     }
 
     public void incrementViewCount(Long ebookId) {
-        String key = EBOOK_VIEW_COUNT_KEY + ebookId;
+        String key = RedisKeyUtil.getEbookViewCountKey(ebookId);
         redisTemplate.opsForValue().increment(key, 1);
         redisTemplate.expire(key, 1, TimeUnit.DAYS);
         
@@ -307,7 +305,7 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
     
     @Override
     public Map<String, Object> getReadingProgress(Long userId, Long ebookId) {
-        String key = EBOOK_READING_PROGRESS_KEY + userId + ":" + ebookId;
+        String key = RedisKeyUtil.getEbookReadingProgressKey(userId, ebookId);
         Object progressData = redisTemplate.opsForValue().get(key);
         
         if (progressData == null) {
@@ -318,7 +316,9 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
             return defaultProgress;
         }
         
-        return (Map<String, Object>) progressData;
+        @SuppressWarnings("unchecked")
+        Map<String, Object> result = (Map<String, Object>) progressData;
+        return result;
     }
     
     @Override
@@ -328,7 +328,7 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
             throw new BusinessException("电子书不存在");
         }
         
-        String key = EBOOK_FAVORITE_KEY + userId;
+        String key = RedisKeyUtil.getEbookFavoriteKey(userId);
         redisTemplate.opsForSet().add(key, ebookId);
         redisTemplate.expire(key, 30, TimeUnit.DAYS);
         
@@ -338,7 +338,7 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
     
     @Override
     public boolean unfavoriteEbook(Long userId, Long ebookId) {
-        String key = EBOOK_FAVORITE_KEY + userId;
+        String key = RedisKeyUtil.getEbookFavoriteKey(userId);
         redisTemplate.opsForSet().remove(key, ebookId);
         
         log.info("电子书取消收藏成功：用户ID={}, 电子书ID={}", userId, ebookId);
@@ -347,7 +347,7 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
     
     @Override
     public Page<Ebook> getFavoriteEbooks(Long userId, Integer page, Integer size) {
-        String key = EBOOK_FAVORITE_KEY + userId;
+        String key = RedisKeyUtil.getEbookFavoriteKey(userId);
         Set<Object> favoriteIds = redisTemplate.opsForSet().members(key);
         
         if (favoriteIds == null || favoriteIds.isEmpty()) {

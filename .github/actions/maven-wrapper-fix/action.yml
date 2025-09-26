@@ -1,0 +1,55 @@
+name: 'Maven Wrapper Fix'
+description: 'Fix Maven Wrapper permissions and test execution'
+runs:
+  using: 'composite'
+  steps:
+    - name: Fix Maven Wrapper permissions
+      shell: bash
+      run: |
+        echo "🔧 Maven Wrapper Permission Fix"
+        echo "================================"
+        
+        # Check if mvnw exists
+        if [ ! -f "./mvnw" ]; then
+          echo "❌ Maven Wrapper (mvnw) not found!"
+          echo "Current directory: $(pwd)"
+          echo "Files in current directory:"
+          ls -la
+          exit 1
+        fi
+        
+        # Show current permissions
+        echo "📋 Current Maven Wrapper info:"
+        ls -la ./mvnw
+        file ./mvnw
+        
+        # Set multiple permission levels
+        echo "🔐 Setting permissions..."
+        chmod +x ./mvnw
+        chmod 755 ./mvnw
+        chmod u+x ./mvnw
+        
+        # Verify permissions
+        echo "✅ Permission verification:"
+        ls -la ./mvnw
+        
+        # Test execution with detailed output
+        echo "🧪 Testing Maven Wrapper execution..."
+        if ./mvnw --version; then
+          echo "✅ Maven Wrapper test successful!"
+        else
+          echo "❌ Maven Wrapper test failed!"
+          echo "Trying alternative execution methods..."
+          
+          # Try with bash explicitly
+          echo "Trying with bash:"
+          bash ./mvnw --version
+          
+          # Try with sh
+          echo "Trying with sh:"
+          sh ./mvnw --version
+          
+          exit 1
+        fi
+        
+        echo "🎉 Maven Wrapper setup completed successfully!"

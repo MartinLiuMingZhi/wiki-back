@@ -53,8 +53,12 @@ jobs:
           ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
           ${{ runner.os }}-m2-
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run code quality checks
       run: |
+        echo "🚀 Running code quality checks..."
         ./mvnw clean compile -T 1C
         ./mvnw spotbugs:check -T 1C
         ./mvnw checkstyle:check -T 1C
@@ -128,8 +132,12 @@ jobs:
         echo "Waiting for Redis to be ready..."
         timeout 60 bash -c 'until redis-cli -h 127.0.0.1 -p 6379 ping; do sleep 1; done'
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run unit tests
       run: |
+        echo "🚀 Running unit tests..."
         ./mvnw clean test -T 1C
       env:
         SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/wiki_test?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
@@ -171,8 +179,12 @@ jobs:
           ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
           ${{ runner.os }}-m2-
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run integration tests
       run: |
+        echo "🚀 Running integration tests..."
         ./mvnw clean verify -P integration-tests -T 1C
       env:
         SPRING_PROFILES_ACTIVE: test
@@ -204,8 +216,12 @@ jobs:
           ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
           ${{ runner.os }}-m2-
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run performance tests
       run: |
+        echo "🚀 Running performance tests..."
         ./mvnw clean test -Dtest=*PerformanceTest -T 1C
       env:
         SPRING_PROFILES_ACTIVE: test
@@ -242,8 +258,12 @@ jobs:
           ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
           ${{ runner.os }}-m2-
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run OWASP dependency check
       run: |
+        echo "🚀 Running OWASP dependency check..."
         ./mvnw org.owasp:dependency-check-maven:check -T 1C
         
     - name: Upload security scan results

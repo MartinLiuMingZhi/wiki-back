@@ -294,12 +294,23 @@ jobs:
         
         # 复制JAR文件
         cp ./artifacts/*.jar ./release-assets/
+        echo "✅ JAR files copied"
         
-        # 创建源码包
-        tar -czf ./release-assets/wiki-source.tar.gz --exclude='.git' --exclude='target' --exclude='node_modules' .
+        # 创建源码包（排除release-assets目录避免循环引用）
+        echo "📦 Creating source package..."
+        tar -czf ./release-assets/wiki-source.tar.gz \
+          --exclude='.git' \
+          --exclude='target' \
+          --exclude='node_modules' \
+          --exclude='./release-assets' \
+          --exclude='./artifacts' \
+          --exclude='./reports' \
+          .
+        echo "✅ Source package created"
         
         # 创建测试报告包
         if [ -d "./reports" ] && [ "$(ls -A ./reports 2>/dev/null)" ]; then
+          echo "📦 Creating test reports package..."
           tar -czf ./release-assets/test-reports.tar.gz -C ./reports .
           echo "✅ Test reports packaged"
         else

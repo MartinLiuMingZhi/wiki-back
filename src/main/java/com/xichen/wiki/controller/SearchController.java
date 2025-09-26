@@ -2,10 +2,11 @@ package com.xichen.wiki.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xichen.wiki.common.Result;
+import com.xichen.wiki.dto.AdvancedSearchRequest;
 import com.xichen.wiki.entity.Document;
 import com.xichen.wiki.entity.Ebook;
 import com.xichen.wiki.service.SearchService;
-import com.xichen.wiki.util.UserContext;
+import com.xichen.wiki.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +25,21 @@ import java.util.Map;
 
 /**
  * 搜索控制器
+ * 
+ * 提供完整的搜索功能，包括：
+ * - 全局搜索：支持文档和电子书的统一搜索
+ * - 分类搜索：分别搜索文档或电子书
+ * - 搜索建议：根据用户输入提供智能搜索建议
+ * - 搜索历史：记录和管理用户的搜索历史
+ * - 热门搜索：获取系统热门搜索词
+ * - 高级搜索：支持多条件组合的复杂搜索
+ * 
+ * 安全机制：
+ * - 所有接口都需要JWT token认证
+ * - 自动记录用户搜索行为用于个性化推荐
+ * 
+ * @author xichen
+ * @since 2024-09-25
  */
 @Slf4j
 @RestController
@@ -34,29 +50,54 @@ public class SearchController {
 
     @Autowired
     private SearchService searchService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
 
+    /**
+     * 全局搜索
+     * 
+     * 业务逻辑：
+     * 1. 从JWT token中解析用户ID
+     * 2. 调用搜索服务执行全局搜索（文档+电子书）
+     * 3. 自动记录用户搜索历史用于个性化推荐
+     * 4. 返回搜索结果和分页信息
+     * 
+     * 搜索范围：
+     * - type="all": 搜索文档和电子书
+     * - type="document": 仅搜索文档
+     * - type="ebook": 仅搜索电子书
+     * 
+     * @param token JWT认证token
+     * @param keyword 搜索关键词
+     * @param type 搜索类型（all/document/ebook）
+     * @param page 页码（从1开始）
+     * @param size 每页大小
+     * @return 搜索结果，包含文档列表、电子书列表和分页信息
+     */
     @Operation(summary = "全局搜索", description = "搜索文档和电子书")
     @GetMapping
     public Result<Map<String, Object>> globalSearch(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "搜索类型") @RequestParam(defaultValue = "all") String type,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
         
-        Long userId = UserContext.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "用户未登录");
-        }
+        // 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
+            // 执行全局搜索
             Map<String, Object> result = searchService.globalSearch(keyword, type, userId, page, size);
             
-            // 记录搜索历史
+            // 记录搜索历史，用于个性化推荐和搜索分析
             searchService.recordSearchHistory(userId, keyword, type);
             
+            log.info("全局搜索成功：用户ID={}, 关键词={}, 类型={}, 页码={}", userId, keyword, type, page);
             return Result.success(result);
         } catch (Exception e) {
-            log.error("搜索失败：{}", e.getMessage());
+            log.error("全局搜索失败：用户ID={}, 关键词={}, 错误={}", userId, keyword, e.getMessage(), e);
             return Result.error("搜索失败：" + e.getMessage());
         }
     }
@@ -64,14 +105,12 @@ public class SearchController {
     @Operation(summary = "搜索文档", description = "只搜索文档")
     @GetMapping("/documents")
     public Result<Page<Document>> searchDocuments(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
         
-        Long userId = UserContext.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "用户未登录");
-        }
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
             Page<Document> documents = searchService.searchDocuments(keyword, userId, page, size);
@@ -85,14 +124,12 @@ public class SearchController {
     @Operation(summary = "搜索电子书", description = "只搜索电子书")
     @GetMapping("/ebooks")
     public Result<Page<Ebook>> searchEbooks(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
         
-        Long userId = UserContext.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "用户未登录");
-        }
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
             Page<Ebook> ebooks = searchService.searchEbooks(keyword, userId, page, size);
@@ -106,13 +143,11 @@ public class SearchController {
     @Operation(summary = "获取搜索建议", description = "根据输入获取搜索建议")
     @GetMapping("/suggestions")
     public Result<List<String>> getSearchSuggestions(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "建议数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit) {
         
-        Long userId = UserContext.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "用户未登录");
-        }
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
             String[] suggestionsArray = searchService.getSearchSuggestions(keyword, userId);
@@ -141,12 +176,10 @@ public class SearchController {
     @Operation(summary = "获取搜索历史", description = "获取用户的搜索历史")
     @GetMapping("/history")
     public Result<List<Map<String, Object>>> getSearchHistory(
+            @RequestHeader("Authorization") String token,
             @Parameter(description = "数量") @RequestParam(defaultValue = "20") @Min(1) Integer limit) {
         
-        Long userId = UserContext.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "用户未登录");
-        }
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
             List<Map<String, Object>> history = searchService.getUserSearchHistory(userId, limit);
@@ -159,11 +192,8 @@ public class SearchController {
 
     @Operation(summary = "清空搜索历史", description = "清空用户的搜索历史")
     @DeleteMapping("/history")
-    public Result<Object> clearSearchHistory() {
-        Long userId = UserContext.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "用户未登录");
-        }
+    public Result<Object> clearSearchHistory(@RequestHeader("Authorization") String token) {
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
             searchService.clearUserSearchHistory(userId);
@@ -176,11 +206,10 @@ public class SearchController {
 
     @Operation(summary = "高级搜索", description = "支持多条件的高级搜索")
     @PostMapping("/advanced")
-    public Result<Map<String, Object>> advancedSearch(@Valid @RequestBody AdvancedSearchRequest request) {
-        Long userId = UserContext.getCurrentUserId();
-        if (userId == null) {
-            return Result.error(401, "用户未登录");
-        }
+    public Result<Map<String, Object>> advancedSearch(
+            @RequestHeader("Authorization") String token,
+            @Valid @RequestBody AdvancedSearchRequest request) {
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
             Map<String, Object> result = searchService.advancedSearch(
@@ -201,36 +230,4 @@ public class SearchController {
         }
     }
 
-    // ==================== 请求DTO类 ====================
-
-    /**
-     * 高级搜索请求
-     */
-    public static class AdvancedSearchRequest {
-        @NotBlank(message = "搜索关键词不能为空")
-        private String keyword;
-        
-        private String type; // document, ebook, all
-        private Long categoryId;
-        private String startDate;
-        private String endDate;
-        private String sortBy; // title, created_at, updated_at
-        private String sortOrder; // asc, desc
-        
-        // Getters and Setters
-        public String getKeyword() { return keyword; }
-        public void setKeyword(String keyword) { this.keyword = keyword; }
-        public String getType() { return type; }
-        public void setType(String type) { this.type = type; }
-        public Long getCategoryId() { return categoryId; }
-        public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
-        public String getStartDate() { return startDate; }
-        public void setStartDate(String startDate) { this.startDate = startDate; }
-        public String getEndDate() { return endDate; }
-        public void setEndDate(String endDate) { this.endDate = endDate; }
-        public String getSortBy() { return sortBy; }
-        public void setSortBy(String sortBy) { this.sortBy = sortBy; }
-        public String getSortOrder() { return sortOrder; }
-        public void setSortOrder(String sortOrder) { this.sortOrder = sortOrder; }
-    }
 }

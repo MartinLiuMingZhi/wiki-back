@@ -1,6 +1,8 @@
 package com.xichen.wiki.controller;
 
 import com.xichen.wiki.common.Result;
+import com.xichen.wiki.dto.ConfirmUploadRequest;
+import com.xichen.wiki.dto.GenerateUploadUrlRequest;
 import com.xichen.wiki.service.FileService;
 import com.xichen.wiki.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
@@ -173,42 +175,6 @@ public class FileController {
         return Result.success(Map.of("exists", exists));
     }
 
-    /**
-     * 生成上传URL请求DTO
-     */
-    public static class GenerateUploadUrlRequest {
-        @NotBlank(message = "文件名不能为空")
-        private String fileName;
-        
-        private String contentType;
-        
-        private String folder;
-        
-        // Getters and Setters
-        public String getFileName() { return fileName; }
-        public void setFileName(String fileName) { this.fileName = fileName; }
-        public String getContentType() { return contentType; }
-        public void setContentType(String contentType) { this.contentType = contentType; }
-        public String getFolder() { return folder; }
-        public void setFolder(String folder) { this.folder = folder; }
-    }
-
-    /**
-     * 确认上传请求DTO
-     */
-    public static class ConfirmUploadRequest {
-        @NotBlank(message = "文件键不能为空")
-        private String fileKey;
-        
-        @NotNull(message = "文件大小不能为空")
-        private Long fileSize;
-        
-        // Getters and Setters
-        public String getFileKey() { return fileKey; }
-        public void setFileKey(String fileKey) { this.fileKey = fileKey; }
-        public Long getFileSize() { return fileSize; }
-        public void setFileSize(Long fileSize) { this.fileSize = fileSize; }
-    }
 
     /**
      * 获取本地文件

@@ -2,6 +2,8 @@ package com.xichen.wiki.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xichen.wiki.common.Result;
+import com.xichen.wiki.dto.CreateDocumentRequest;
+import com.xichen.wiki.dto.UpdateDocumentRequest;
 import com.xichen.wiki.entity.Document;
 import com.xichen.wiki.service.DocumentService;
 import com.xichen.wiki.util.JwtUtil;
@@ -15,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 /**
@@ -125,52 +126,5 @@ public class DocumentController {
         return Result.success("操作成功");
     }
 
-    /**
-     * 创建文档请求DTO
-     */
-    public static class CreateDocumentRequest {
-        @NotBlank(message = "标题不能为空")
-        private String title;
-        
-        private String content;
-        
-        private Long categoryId;
-        
-        private Long[] tagIds;
-        
-        // Getters and Setters
-        public String getTitle() { return title; }
-        public void setTitle(String title) { this.title = title; }
-        public String getContent() { return content; }
-        public void setContent(String content) { this.content = content; }
-        public Long getCategoryId() { return categoryId; }
-        public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
-        public Long[] getTagIds() { return tagIds; }
-        public void setTagIds(Long[] tagIds) { this.tagIds = tagIds; }
-    }
-
-    /**
-     * 更新文档请求DTO
-     */
-    public static class UpdateDocumentRequest {
-        @NotBlank(message = "标题不能为空")
-        private String title;
-        
-        private String content;
-        
-        private Long categoryId;
-        
-        private Long[] tagIds;
-        
-        // Getters and Setters
-        public String getTitle() { return title; }
-        public void setTitle(String title) { this.title = title; }
-        public String getContent() { return content; }
-        public void setContent(String content) { this.content = content; }
-        public Long getCategoryId() { return categoryId; }
-        public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
-        public Long[] getTagIds() { return tagIds; }
-        public void setTagIds(Long[] tagIds) { this.tagIds = tagIds; }
-    }
 }
 

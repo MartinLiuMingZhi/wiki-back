@@ -14,6 +14,8 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -147,12 +149,25 @@ public class VerificationCodeServiceImpl implements IVerificationCodeService {
     
     /**
      * 从数据库验证（兼容性方法）
+     * 
+     * @param email 邮箱地址
+     * @param code 验证码
+     * @param type 验证码类型
+     * @return 验证是否成功
      */
     private boolean verifyFromDatabase(String email, String code, String type) {
         try {
+            log.debug("开始从数据库验证验证码，邮箱: {}, 类型: {}", email, type);
+            
             VerificationCode verificationCode = verificationCodeMapper.findValidCodeByEmailAndType(email, type);
             
-            if (verificationCode == null || !verificationCode.getCode().equals(code)) {
+            if (verificationCode == null) {
+                log.warn("数据库中未找到有效验证码，邮箱: {}, 类型: {}", email, type);
+                return false;
+            }
+            
+            if (!verificationCode.getCode().equals(code)) {
+                log.warn("验证码不匹配，邮箱: {}, 类型: {}", email, type);
                 return false;
             }
             
@@ -161,48 +176,81 @@ public class VerificationCodeServiceImpl implements IVerificationCodeService {
             verificationCode.setUpdateTime(LocalDateTime.now());
             verificationCodeMapper.updateById(verificationCode);
             
+            log.info("数据库验证成功，邮箱: {}, 类型: {}", email, type);
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("数据库验证验证码异常，邮箱: {}, 类型: {}, 错误: {}", email, type, e.getMessage(), e);
             return false;
         }
     }
     
     /**
      * 更新数据库状态
+     * 
+     * @param email 邮箱地址
+     * @param code 验证码
+     * @param type 验证码类型
+     * @param used 是否已使用
      */
     private void updateDatabaseStatus(String email, String code, String type, boolean used) {
         try {
+            log.debug("开始更新数据库状态，邮箱: {}, 类型: {}, 使用状态: {}", email, type, used);
+            
             VerificationCode verificationCode = verificationCodeMapper.findValidCodeByEmailAndType(email, type);
             if (verificationCode != null && verificationCode.getCode().equals(code)) {
                 verificationCode.setUsed(used);
                 verificationCode.setUpdateTime(LocalDateTime.now());
                 verificationCodeMapper.updateById(verificationCode);
+                
+                log.debug("数据库状态更新成功，邮箱: {}, 类型: {}", email, type);
+            } else {
+                log.warn("未找到匹配的验证码记录，邮箱: {}, 类型: {}", email, type);
             }
         } catch (Exception e) {
-            // 数据库更新失败不影响主流程
-            e.printStackTrace();
+            // 数据库更新失败不影响主流程，但需要记录错误日志
+            log.error("更新数据库状态失败，邮箱: {}, 类型: {}, 错误: {}", email, type, e.getMessage(), e);
         }
     }
     
     /**
      * 清理过期的验证码（Redis自动清理，数据库手动清理）
+     * 
+     * 业务逻辑：
+     * 1. 调用Mapper清理数据库中过期的验证码记录
+     * 2. Redis中的过期数据会自动清理，无需手动处理
+     * 3. 记录清理过程的日志信息
      */
     public void cleanExpiredCodes() {
         try {
+            log.info("开始清理过期验证码");
             verificationCodeMapper.cleanExpiredCodes();
+            log.info("过期验证码清理完成");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("清理过期验证码失败，错误: {}", e.getMessage(), e);
         }
     }
     
     /**
      * 获取验证码统计信息
+     * 
+     * @param email 邮箱地址
+     * @return 统计信息Map，包含总数、今日发送数等信息
      */
-    public Object getVerificationStats(String email) {
+    public Map<String, Object> getVerificationStats(String email) {
         try {
+            log.debug("开始获取验证码统计信息，邮箱: {}", email);
+            
             // 从数据库获取统计信息
-            return verificationCodeMapper.selectCount(null);
+            Long totalCount = verificationCodeMapper.selectCount(null);
+            
+            // 构建统计信息
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalCount", totalCount);
+            stats.put("email", email);
+            stats.put("timestamp", LocalDateTime.now());
+            
+            log.debug("验证码统计信息获取成功，邮箱: {}, 总数: {}", email, totalCount);
+            return stats;
         } catch (Exception e) {
             log.error("获取验证码统计信息失败，邮箱: {}, 错误: {}", email, e.getMessage(), e);
             return null;

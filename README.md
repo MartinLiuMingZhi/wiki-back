@@ -358,6 +358,13 @@ mvn test -Dtest=UserServiceTest
 
 本项目采用MIT许可证。
 
+## 📚 文档结构
+
+- 📖 [CI/CD文档](./CI-CD.md) - 完整的CI/CD流程说明（包含包发布和版本管理）
+- 🏗️ [架构文档](./docs/ARCHITECTURE.md) - 系统架构和技术栈说明
+- 📖 [API文档](./docs/API.md) - 完整的API接口说明
+- 🌍 [英文文档](./README_EN.md) - 完整的英文项目说明
+
 ## 📞 支持
 
 如有问题，请提交Issue或联系开发团队。

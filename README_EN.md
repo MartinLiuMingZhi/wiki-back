@@ -149,10 +149,61 @@ git push origin v1.0.0/develop
 5. 🐳 **Build Docker image**
 6. 🌐 **Deploy to production**
 
-## 📦 Release Information Optimization
+## 📦 Package Publishing and Version Management
 
-### 🚀 Release Information Format
-Each release automatically generates detailed release information including:
+### 🚀 Package Types
+
+#### **1. JAR Package (Main Release Package)**
+- **File**: `wiki-*.jar`
+- **Type**: Spring Boot executable JAR
+- **Purpose**: Direct deployment to server
+- **Run Command**: `java -jar wiki-*.jar`
+
+#### **2. Docker Image (Containerized Deployment)**
+- **Image**: `ghcr.io/{repository}/wiki:tag`
+- **Architecture**: linux/amd64, linux/arm64
+- **Purpose**: Containerized deployment
+- **Run Command**: `docker run -p 8080:8080 ghcr.io/{repository}/wiki:tag`
+
+#### **3. Source Package (Optional)**
+- **File**: `wiki-source.tar.gz`
+- **Content**: Complete source code
+- **Purpose**: Source distribution and secondary development
+
+#### **4. Test Report Package**
+- **File**: `test-reports.tar.gz`
+- **Content**: JaCoCo code coverage reports
+- **Purpose**: Quality assessment and auditing
+
+### 🏷️ Version Management Strategy
+
+#### **Version Number Generation Rules**
+| Branch Type | Version Format | Generation Method | Example |
+|-------------|----------------|-------------------|---------|
+| **develop branch** | v1.0.0, v1.0.1, v1.0.2 | Auto-increment PATCH based on latest tag | v1.0.0 → v1.0.1 |
+| **v*/develop branch** | v1.0.0, v1.0.1, v1.0.2 | Auto-increment PATCH based on major version | v1.0.0 → v1.0.1 |
+| **Manual trigger** | Custom version | Manually specified version | v2.0.0-beta |
+
+#### **Version Release Process**
+```mermaid
+graph TD
+    A[Code Commit] --> B{Branch Type}
+    B -->|develop| C[Auto-increment PATCH version]
+    B -->|v*/develop| D[Increment based on major version]
+    B -->|Manual trigger| E[Custom version]
+    C --> F[Create Git tag]
+    D --> F
+    E --> F
+    F --> G[Create GitHub Release]
+    G --> H[Build JAR package]
+    G --> I[Build Docker image]
+    H --> J[Publish to GitHub Releases]
+    I --> K[Push to container registry]
+    J --> L[Deploy to production]
+    K --> L
+```
+
+### 📦 Release Information Format
 
 #### **Release Information Structure**
 ```markdown
@@ -182,11 +233,61 @@ This release includes all changes with the following improvements:
 - ✅ Comprehensive testing and quality checks
 ```
 
-#### **Optimization Features**
-- ✅ **Rich Information**: Detailed version, build, statistics, and change information
-- ✅ **Clear Structure**: Organized content with titles, emojis, and code blocks
-- ✅ **High Utility**: Provides useful links like Docker images and GitHub Actions
-- ✅ **Professional**: Follows modern software release best practices
+### 🔧 Package Usage
+
+#### **Running JAR Package**
+```bash
+# Download JAR package
+wget https://github.com/{owner}/{repo}/releases/download/v1.0.0/wiki-1.0.0.jar
+
+# Run application
+java -jar wiki-1.0.0.jar
+
+# Specify configuration file
+java -jar wiki-1.0.0.jar --spring.profiles.active=prod
+```
+
+#### **Running Docker Image**
+```bash
+# Pull image
+docker pull ghcr.io/{owner}/{repo}/wiki:v1.0.0
+
+# Run container
+docker run -d \
+  --name wiki-app \
+  -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=prod \
+  ghcr.io/{owner}/{repo}/wiki:v1.0.0
+
+# Use Docker Compose
+docker-compose up -d
+```
+
+#### **Deploy to Kubernetes**
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wiki-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wiki-app
+  template:
+    metadata:
+      labels:
+        app: wiki-app
+    spec:
+      containers:
+      - name: wiki-app
+        image: ghcr.io/{owner}/{repo}/wiki:v1.0.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "prod"
+```
 
 ## 🔧 Workflow Details
 
@@ -386,11 +487,12 @@ This release includes all changes with the following improvements:
 | **Resource Configuration** | Optimize CPU, memory allocation |
 | **Application Monitoring** | Monitor performance metrics, analyze bottlenecks |
 
-## 📚 Related Documentation
+## 📚 Documentation Structure
 
-- 📖 [API Documentation](./docs/API.md) - Complete API interface documentation
+- 📖 [CI/CD Documentation](./CI-CD.md) - Complete CI/CD process documentation (including package publishing and version management)
 - 🏗️ [Architecture Documentation](./docs/ARCHITECTURE.md) - System architecture and tech stack
-- 🏷️ [Version Management Documentation](./docs/VERSION_MANAGEMENT.md) - Detailed version management strategies and examples
+- 📖 [API Documentation](./docs/API.md) - Complete API interface documentation
+- 🌍 [English Documentation](./README_EN.md) - Complete English project documentation
 
 ## 📞 Contact Information
 
@@ -404,6 +506,13 @@ For questions, please contact:
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 📚 Documentation Structure
+
+- 📖 [CI/CD Documentation](./CI-CD.md) - Complete CI/CD process documentation (including package publishing and version management)
+- 🏗️ [Architecture Documentation](./docs/ARCHITECTURE.md) - System architecture and tech stack
+- 📖 [API Documentation](./docs/API.md) - Complete API interface documentation
+- 🌍 [English Documentation](./README_EN.md) - Complete English project documentation
 
 ## 🤝 Contributing
 

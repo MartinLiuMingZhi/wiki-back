@@ -1,7 +1,6 @@
 package com.xichen.wiki.service.impl;
 
 import com.xichen.wiki.service.IEmailService;
-import com.xichen.wiki.service.impl.EmailTemplateServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;

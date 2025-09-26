@@ -4,8 +4,6 @@ import com.xichen.wiki.config.VerificationCodeProperties;
 import com.xichen.wiki.constant.VerificationCodeConstants;
 import com.xichen.wiki.exception.VerificationCodeException;
 import com.xichen.wiki.mapper.VerificationCodeMapper;
-import com.xichen.wiki.service.IEmailService;
-import com.xichen.wiki.service.IVerificationCodeService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

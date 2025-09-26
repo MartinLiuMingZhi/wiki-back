@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wiki-backend-production
+  namespace: wiki-production
+  labels:
+    app: wiki-backend
+    environment: production
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: wiki-backend
+      environment: production
+  template:
+    metadata:
+      labels:
+        app: wiki-backend
+        environment: production
+    spec:
+      containers:
+      - name: wiki-backend
+        image: ghcr.io/xichen/wiki:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production"
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            secretKeyRef:
+              name: wiki-db-secret
+              key: url
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: wiki-db-secret
+              key: username
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: wiki-db-secret
+              key: password
+        - name: SPRING_DATA_REDIS_HOST
+          value: "redis-production"
+        - name: SPRING_DATA_REDIS_PORT
+          value: "6379"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wiki-backend-service-production
+  namespace: wiki-production
+  labels:
+    app: wiki-backend
+    environment: production
+spec:
+  selector:
+    app: wiki-backend
+    environment: production
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer

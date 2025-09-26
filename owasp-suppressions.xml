@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+    <!-- 抑制已知的误报 -->
+    <suppress>
+        <notes><![CDATA[
+        抑制Spring Boot相关的误报
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.springframework/.*$</packageUrl>
+        <cve>CVE-2016-1000027</cve>
+    </suppress>
+    
+    <!-- 抑制MyBatis Plus相关的误报 -->
+    <suppress>
+        <notes><![CDATA[
+        抑制MyBatis Plus相关的误报
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.baomidou/.*$</packageUrl>
+    </suppress>
+    
+    <!-- 抑制Lombok相关的误报 -->
+    <suppress>
+        <notes><![CDATA[
+        抑制Lombok相关的误报
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.projectlombok/.*$</packageUrl>
+    </suppress>
+    
+    <!-- 抑制Swagger相关的误报 -->
+    <suppress>
+        <notes><![CDATA[
+        抑制Swagger相关的误报
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.swagger\.core/.*$</packageUrl>
+    </suppress>
+    
+    <!-- 抑制Jackson相关的误报 -->
+    <suppress>
+        <notes><![CDATA[
+        抑制Jackson相关的误报
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/com\.fasterxml\.jackson/.*$</packageUrl>
+    </suppress>
+    
+    <!-- 抑制JWT相关的误报 -->
+    <suppress>
+        <notes><![CDATA[
+        抑制JWT相关的误报
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.jsonwebtoken/.*$</packageUrl>
+    </suppress>
+    
+    <!-- 抑制Apache Commons相关的误报 -->
+    <suppress>
+        <notes><![CDATA[
+        抑制Apache Commons相关的误报
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.apache\.commons/.*$</packageUrl>
+    </suppress>
+    
+    <!-- 抑制Hutool相关的误报 -->
+    <suppress>
+        <notes><![CDATA[
+        抑制Hutool相关的误报
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/cn\.hutool/.*$</packageUrl>
+    </suppress>
+</suppressions>

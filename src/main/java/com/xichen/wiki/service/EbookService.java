@@ -1,5 +1,6 @@
 package com.xichen.wiki.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xichen.wiki.entity.Ebook;
 import org.springframework.web.multipart.MultipartFile;
@@ -34,7 +35,7 @@ public interface EbookService extends IService<Ebook> {
     /**
      * 获取用户电子书列表
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Ebook> getUserEbooks(Long userId, Integer page, Integer size, String keyword);
+    Page<Ebook> getUserEbooks(Long userId, Integer page, Integer size, String keyword);
     
     /**
      * 获取电子书详情
@@ -44,7 +45,7 @@ public interface EbookService extends IService<Ebook> {
     /**
      * 搜索电子书
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Ebook> searchEbooks(String keyword, Long userId, Integer page, Integer size);
+    Page<Ebook> searchEbooks(String keyword, Long userId, Integer page, Integer size);
     
     /**
      * 获取电子书统计信息
@@ -84,5 +85,5 @@ public interface EbookService extends IService<Ebook> {
     /**
      * 获取收藏的电子书列表
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Ebook> getFavoriteEbooks(Long userId, Integer page, Integer size);
+    Page<Ebook> getFavoriteEbooks(Long userId, Integer page, Integer size);
 }

@@ -1,5 +1,6 @@
 package com.xichen.wiki.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xichen.wiki.entity.Document;
 
@@ -33,12 +34,12 @@ public interface DocumentService extends IService<Document> {
     /**
      * 获取用户文档列表
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Document> getUserDocuments(Long userId, Integer page, Integer size, String keyword);
+    Page<Document> getUserDocuments(Long userId, Integer page, Integer size, String keyword);
     
     /**
      * 搜索文档
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Document> searchDocuments(String keyword, Long userId, Integer page, Integer size);
+    Page<Document> searchDocuments(String keyword, Long userId, Integer page, Integer size);
     
     /**
      * 获取文档统计信息

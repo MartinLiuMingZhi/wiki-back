@@ -1,6 +1,7 @@
 package com.xichen.wiki.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xichen.wiki.entity.Category;
 import com.xichen.wiki.exception.BusinessException;
@@ -10,9 +11,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 分类服务实现类
@@ -145,10 +146,14 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
     }
 
     @Override
-    public com.baomidou.mybatisplus.extension.plugins.pagination.Page<Category> getUserCategories(Long userId, Integer page, Integer size, String keyword) {
-        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Category> pageParam = new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+    public Page<Category> getUserCategories(Long userId, Integer page, Integer size, String type, String keyword) {
+        Page<Category> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Category> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Category::getUserId, userId);
+        
+        if (type != null && !type.trim().isEmpty()) {
+            wrapper.eq(Category::getType, type);
+        }
         
         if (keyword != null && !keyword.trim().isEmpty()) {
             wrapper.like(Category::getName, keyword);
@@ -176,5 +181,43 @@ public class CategoryServiceImpl extends ServiceImpl<CategoryMapper, Category> i
         }
         
         return result;
+    }
+    
+    @Override
+    public Map<String, Object> getCategoryStatistics(Long userId, String type) {
+        Map<String, Object> statistics = new HashMap<>();
+        
+        // 获取分类总数
+        LambdaQueryWrapper<Category> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Category::getUserId, userId);
+        if (type != null && !type.trim().isEmpty()) {
+            wrapper.eq(Category::getType, type);
+        }
+        long totalCategories = count(wrapper);
+        
+        // 获取有子分类的分类数
+        LambdaQueryWrapper<Category> parentWrapper = new LambdaQueryWrapper<>();
+        parentWrapper.eq(Category::getUserId, userId);
+        if (type != null && !type.trim().isEmpty()) {
+            parentWrapper.eq(Category::getType, type);
+        }
+        parentWrapper.isNotNull(Category::getParentId);
+        long parentCategories = count(parentWrapper);
+        
+        // 获取根分类数
+        LambdaQueryWrapper<Category> rootWrapper = new LambdaQueryWrapper<>();
+        rootWrapper.eq(Category::getUserId, userId);
+        if (type != null && !type.trim().isEmpty()) {
+            rootWrapper.eq(Category::getType, type);
+        }
+        rootWrapper.isNull(Category::getParentId);
+        long rootCategories = count(rootWrapper);
+        
+        statistics.put("totalCategories", totalCategories);
+        statistics.put("parentCategories", parentCategories);
+        statistics.put("rootCategories", rootCategories);
+        statistics.put("type", type);
+        
+        return statistics;
     }
 }

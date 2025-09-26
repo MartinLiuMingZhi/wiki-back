@@ -1,5 +1,6 @@
 package com.xichen.wiki.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xichen.wiki.entity.Tag;
 
@@ -24,12 +25,12 @@ public interface TagService extends IService<Tag> {
     /**
      * 获取用户标签列表
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Tag> getUserTags(Long userId, Integer page, Integer size, String keyword);
+    Page<Tag> getUserTags(Long userId, Integer page, Integer size, String keyword);
     
     /**
      * 获取公共标签
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Tag> getPublicTags(Integer page, Integer size, String keyword);
+    Page<Tag> getPublicTags(Integer page, Integer size, String keyword);
     
     /**
      * 获取热门标签

@@ -1,5 +1,6 @@
 package com.xichen.wiki.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xichen.wiki.common.Result;
 import com.xichen.wiki.dto.CreateCategoryRequest;
 import com.xichen.wiki.dto.UpdateCategoryRequest;
@@ -15,9 +16,11 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 分类控制器
@@ -69,6 +72,21 @@ public class CategoryController {
         );
         
         return Result.success("更新成功", category);
+    }
+
+    @Operation(summary = "获取用户分类列表", description = "分页获取用户的分类列表")
+    @GetMapping
+    public Result<Page<Category>> getCategories(
+            @RequestHeader("Authorization") String token,
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            @Parameter(description = "分类类型") @RequestParam @NotBlank String type,
+            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
+        
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
+        
+        Page<Category> categories = categoryService.getUserCategories(userId, page, size, type, keyword);
+        return Result.success(categories);
     }
 
     @Operation(summary = "获取用户分类树", description = "获取用户的分类树结构")
@@ -127,6 +145,18 @@ public class CategoryController {
         
         categoryService.deleteCategory(id, userId);
         return Result.success("删除成功");
+    }
+
+    @Operation(summary = "获取分类统计", description = "获取用户分类统计信息")
+    @GetMapping("/statistics")
+    public Result<Map<String, Object>> getCategoryStatistics(
+            @RequestHeader("Authorization") String token,
+            @Parameter(description = "分类类型") @RequestParam @NotBlank String type) {
+        
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
+        
+        Map<String, Object> statistics = categoryService.getCategoryStatistics(userId, type);
+        return Result.success(statistics);
     }
 
 }

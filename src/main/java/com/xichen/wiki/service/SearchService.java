@@ -1,5 +1,9 @@
 package com.xichen.wiki.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.xichen.wiki.entity.Document;
+import com.xichen.wiki.entity.Ebook;
+
 import java.util.Map;
 
 /**
@@ -31,12 +35,12 @@ public interface SearchService {
     /**
      * 搜索文档
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.xichen.wiki.entity.Document> searchDocuments(String keyword, Long userId, Integer page, Integer size);
+    Page<Document> searchDocuments(String keyword, Long userId, Integer page, Integer size);
     
     /**
      * 搜索电子书
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<com.xichen.wiki.entity.Ebook> searchEbooks(String keyword, Long userId, Integer page, Integer size);
+    Page<Ebook> searchEbooks(String keyword, Long userId, Integer page, Integer size);
     
     /**
      * 获取热门搜索词

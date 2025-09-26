@@ -3,7 +3,9 @@ package com.xichen.wiki.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xichen.wiki.entity.Document;
+import com.xichen.wiki.entity.DocumentTag;
 import com.xichen.wiki.entity.Ebook;
+import com.xichen.wiki.mapper.DocumentTagMapper;
 import com.xichen.wiki.service.DocumentService;
 import com.xichen.wiki.service.EbookService;
 import com.xichen.wiki.service.SearchService;
@@ -14,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +33,9 @@ public class SearchServiceImpl implements SearchService {
     
     @Autowired
     private EbookService ebookService;
+    
+    @Autowired
+    private DocumentTagMapper documentTagMapper;
     
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
@@ -125,13 +129,9 @@ public class SearchServiceImpl implements SearchService {
         redisTemplate.expire(key, 30, TimeUnit.DAYS);
         
         // 更新热门搜索词
-        redisTemplate.opsForZSet().incrementScore(RedisKeyUtil.getPopularSearchTermsKey(), keyword, 1);
-        redisTemplate.expire(RedisKeyUtil.getPopularSearchTermsKey(), 30, TimeUnit.DAYS);
-        
-        // 更新搜索建议
-        String suggestionKey = "search:suggestion:" + keyword.toLowerCase();
-        redisTemplate.opsForZSet().incrementScore(suggestionKey, keyword, 1);
-        redisTemplate.expire(suggestionKey, 7, TimeUnit.DAYS);
+        String popularKey = RedisKeyUtil.getPopularSearchTermsKey();
+        redisTemplate.opsForZSet().incrementScore(popularKey, keyword, 1);
+        redisTemplate.expire(popularKey, 30, TimeUnit.DAYS);
         
         log.info("搜索历史记录成功：用户ID={}, 关键词={}, 类型={}", userId, keyword, type);
     }
@@ -173,13 +173,13 @@ public class SearchServiceImpl implements SearchService {
             result.put("documents", documents);
             result.put("total", documents.getTotal());
         } else if ("ebook".equals(type)) {
-            Page<Ebook> ebooks = advancedSearchEbooks(keyword, categoryId, sortBy, sortOrder, userId, page, size);
+            Page<Ebook> ebooks = advancedSearchEbooks(keyword, categoryId, tagIds, sortBy, sortOrder, userId, page, size);
             result.put("ebooks", ebooks);
             result.put("total", ebooks.getTotal());
         } else {
             // 全局高级搜索
             Page<Document> documents = advancedSearchDocuments(keyword, categoryId, tagIds, sortBy, sortOrder, userId, page, size);
-            Page<Ebook> ebooks = advancedSearchEbooks(keyword, categoryId, sortBy, sortOrder, userId, page, size);
+            Page<Ebook> ebooks = advancedSearchEbooks(keyword, categoryId, tagIds, sortBy, sortOrder, userId, page, size);
             
             result.put("documents", documents);
             result.put("ebooks", ebooks);
@@ -237,7 +237,7 @@ public class SearchServiceImpl implements SearchService {
     /**
      * 高级电子书搜索
      */
-    private Page<Ebook> advancedSearchEbooks(String keyword, Long categoryId, String sortBy, String sortOrder, 
+    private Page<Ebook> advancedSearchEbooks(String keyword, Long categoryId, Long[] tagIds, String sortBy, String sortOrder, 
                                              Long userId, Integer page, Integer size) {
         Page<Ebook> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<Ebook> wrapper = new LambdaQueryWrapper<>();
@@ -256,6 +256,9 @@ public class SearchServiceImpl implements SearchService {
         if (categoryId != null) {
             wrapper.eq(Ebook::getCategoryId, categoryId);
         }
+        
+        // 标签筛选（电子书暂时不支持标签，但保留接口一致性）
+        // 如果将来需要支持电子书标签，可以在这里添加相关逻辑
         
         // 排序
         applyEbookSorting(wrapper, sortBy, sortOrder);
@@ -345,9 +348,20 @@ public class SearchServiceImpl implements SearchService {
      * 根据标签获取文档ID列表
      */
     private List<Long> getDocumentIdsByTags(Long[] tagIds) {
-        // 这里应该查询document_tags表获取关联的文档ID
-        // 暂时返回空列表，实际应该实现数据库查询
-        return new ArrayList<>();
+        if (tagIds == null || tagIds.length == 0) {
+            return new ArrayList<>();
+        }
+        
+        // 查询document_tags表获取关联的文档ID
+        LambdaQueryWrapper<DocumentTag> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(DocumentTag::getTagId, Arrays.asList(tagIds));
+        wrapper.select(DocumentTag::getDocumentId);
+        
+        List<DocumentTag> documentTags = documentTagMapper.selectList(wrapper);
+        return documentTags.stream()
+                .map(DocumentTag::getDocumentId)
+                .distinct()
+                .collect(Collectors.toList());
     }
     
     @Override
@@ -356,51 +370,107 @@ public class SearchServiceImpl implements SearchService {
             return new String[0];
         }
         
-        // 从Redis获取搜索建议
-        String suggestionsKey = "search:suggestions:" + keyword.toLowerCase();
-        Set<Object> suggestionsObj = redisTemplate.opsForSet().members(suggestionsKey);
-        Set<String> suggestions = suggestionsObj != null ? 
-            suggestionsObj.stream().map(Object::toString).collect(Collectors.toSet()) : 
-            new HashSet<>();
+        Set<String> suggestions = new LinkedHashSet<>();
         
-        if (suggestions == null || suggestions.isEmpty()) {
-            // 如果Redis中没有，从数据库获取
-            suggestions = getSuggestionsFromDatabase(keyword);
-            if (!suggestions.isEmpty()) {
-                // 存储到Redis，设置过期时间
-                redisTemplate.opsForSet().add(suggestionsKey, suggestions.toArray());
-                redisTemplate.expire(suggestionsKey, Duration.ofHours(1));
-            }
-        }
+        // 1. 获取用户历史搜索建议（优先级最高）
+        List<String> userHistorySuggestions = getUserHistorySuggestions(keyword, userId);
+        suggestions.addAll(userHistorySuggestions);
         
-        return suggestions.toArray(new String[0]);
+        // 2. 获取热门搜索建议
+        List<String> popularSuggestions = getPopularSearchSuggestions(keyword);
+        suggestions.addAll(popularSuggestions);
+        
+        // 3. 从数据库获取内容匹配建议
+        List<String> contentSuggestions = getContentBasedSuggestions(keyword, userId);
+        suggestions.addAll(contentSuggestions);
+        
+        // 限制建议数量，避免过多
+        List<String> result = suggestions.stream()
+                .filter(StringUtils::isNotBlank)
+                .distinct()
+                .limit(10)
+                .collect(Collectors.toList());
+        
+        return result.toArray(new String[0]);
     }
     
-    private Set<String> getSuggestionsFromDatabase(String keyword) {
+    /**
+     * 获取用户历史搜索建议
+     */
+    private List<String> getUserHistorySuggestions(String keyword, Long userId) {
+        try {
+            String historyKey = RedisKeyUtil.getSearchHistoryKey(userId);
+            Set<Object> historyObj = redisTemplate.opsForZSet().reverseRange(historyKey, 0, 9);
+            
+            if (historyObj != null) {
+                return historyObj.stream()
+                        .map(Object::toString)
+                        .filter(historyKeyword -> historyKeyword.toLowerCase().contains(keyword.toLowerCase()))
+                        .limit(3)
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.warn("获取用户历史搜索建议失败: {}", e.getMessage());
+        }
+        return new ArrayList<>();
+    }
+    
+    /**
+     * 获取热门搜索建议
+     */
+    private List<String> getPopularSearchSuggestions(String keyword) {
+        try {
+            String popularKey = RedisKeyUtil.getPopularSearchTermsKey();
+            Set<Object> popularObj = redisTemplate.opsForZSet().reverseRange(popularKey, 0, 19);
+            
+            if (popularObj != null) {
+                return popularObj.stream()
+                        .map(Object::toString)
+                        .filter(popularKeyword -> popularKeyword.toLowerCase().contains(keyword.toLowerCase()))
+                        .limit(3)
+                        .collect(Collectors.toList());
+            }
+        } catch (Exception e) {
+            log.warn("获取热门搜索建议失败: {}", e.getMessage());
+        }
+        return new ArrayList<>();
+    }
+    
+    /**
+     * 获取基于内容的搜索建议
+     */
+    private List<String> getContentBasedSuggestions(String keyword, Long userId) {
         Set<String> suggestions = new HashSet<>();
         
-        // 从文档标题中获取建议
-        LambdaQueryWrapper<Document> docWrapper = new LambdaQueryWrapper<>();
-        docWrapper.like(Document::getTitle, keyword)
-                .orderByDesc(Document::getCreatedAt)
-                .last("LIMIT 5");
-        
-        List<Document> documents = documentService.list(docWrapper);
-        for (Document doc : documents) {
-            suggestions.add(doc.getTitle());
+        try {
+            // 从用户文档标题中获取建议
+            LambdaQueryWrapper<Document> docWrapper = new LambdaQueryWrapper<>();
+            docWrapper.eq(Document::getUserId, userId)
+                    .like(Document::getTitle, keyword)
+                    .orderByDesc(Document::getCreatedAt)
+                    .last("LIMIT 3");
+            
+            List<Document> documents = documentService.list(docWrapper);
+            for (Document doc : documents) {
+                suggestions.add(doc.getTitle());
+            }
+            
+            // 从用户电子书标题中获取建议
+            LambdaQueryWrapper<Ebook> ebookWrapper = new LambdaQueryWrapper<>();
+            ebookWrapper.eq(Ebook::getUserId, userId)
+                    .like(Ebook::getTitle, keyword)
+                    .orderByDesc(Ebook::getCreatedAt)
+                    .last("LIMIT 3");
+            
+            List<Ebook> ebooks = ebookService.list(ebookWrapper);
+            for (Ebook ebook : ebooks) {
+                suggestions.add(ebook.getTitle());
+            }
+            
+        } catch (Exception e) {
+            log.warn("获取内容搜索建议失败: {}", e.getMessage());
         }
         
-        // 从电子书标题中获取建议
-        LambdaQueryWrapper<Ebook> ebookWrapper = new LambdaQueryWrapper<>();
-        ebookWrapper.like(Ebook::getTitle, keyword)
-                .orderByDesc(Ebook::getCreatedAt)
-                .last("LIMIT 5");
-        
-        List<Ebook> ebooks = ebookService.list(ebookWrapper);
-        for (Ebook ebook : ebooks) {
-            suggestions.add(ebook.getTitle());
-        }
-        
-        return suggestions;
+        return new ArrayList<>(suggestions);
     }
 }

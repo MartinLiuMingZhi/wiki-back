@@ -1,5 +1,6 @@
 package com.xichen.wiki.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xichen.wiki.entity.User;
 
@@ -68,12 +69,12 @@ public interface UserService extends IService<User> {
     /**
      * 获取用户活动
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> getUserActivities(Long userId, Integer page, Integer size);
+    Page<Map<String, Object>> getUserActivities(Long userId, Integer page, Integer size);
 
     /**
      * 获取用户活动日志
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Map<String, Object>> getUserActivityLogs(Long userId, Integer page, Integer size);
+    Page<Map<String, Object>> getUserActivityLogs(Long userId, Integer page, Integer size);
 
     /**
      * 记录用户活动

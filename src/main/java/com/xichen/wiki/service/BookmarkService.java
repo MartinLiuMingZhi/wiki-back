@@ -1,5 +1,6 @@
 package com.xichen.wiki.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.xichen.wiki.entity.Bookmark;
 
@@ -27,7 +28,7 @@ public interface BookmarkService extends IService<Bookmark> {
     /**
      * 获取用户书签列表
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Bookmark> getUserBookmarks(Long userId, Integer page, Integer size);
+    Page<Bookmark> getUserBookmarks(Long userId, Integer page, Integer size);
     
     /**
      * 检查书签是否存在
@@ -52,7 +53,7 @@ public interface BookmarkService extends IService<Bookmark> {
     /**
      * 获取用户书签列表（带电子书ID过滤）
      */
-    com.baomidou.mybatisplus.extension.plugins.pagination.Page<Bookmark> getUserBookmarks(Long userId, Integer page, Integer size, Long ebookId);
+    Page<Bookmark> getUserBookmarks(Long userId, Integer page, Integer size, Long ebookId);
     
     /**
      * 批量删除书签（List版本）

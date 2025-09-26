@@ -4,14 +4,21 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.xichen.wiki.entity.Document;
+import com.xichen.wiki.entity.DocumentTag;
 import com.xichen.wiki.exception.BusinessException;
 import com.xichen.wiki.mapper.DocumentMapper;
+import com.xichen.wiki.mapper.DocumentTagMapper;
 import com.xichen.wiki.service.DocumentService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -21,7 +28,11 @@ import java.util.Map;
 @Service
 public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> implements DocumentService {
 
+    @Autowired
+    private DocumentTagMapper documentTagMapper;
+
     @Override
+    @Transactional
     public Document createDocument(Long userId, String title, String content, Long categoryId, Long[] tagIds) {
         Document document = new Document();
         document.setTitle(title);
@@ -33,11 +44,18 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         document.setWordCount(content != null ? content.length() : 0);
         
         save(document);
+        
+        // 处理标签关联
+        if (tagIds != null && tagIds.length > 0) {
+            saveDocumentTags(document.getId(), tagIds);
+        }
+        
         log.info("文档创建成功：{}", title);
         return document;
     }
 
     @Override
+    @Transactional
     public Document updateDocument(Long documentId, Long userId, String title, String content, Long categoryId, Long[] tagIds) {
         Document document = getById(documentId);
         if (document == null) {
@@ -55,6 +73,13 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         document.setWordCount(content != null ? content.length() : 0);
         
         updateById(document);
+        
+        // 更新标签关联
+        documentTagMapper.deleteByDocumentId(documentId);
+        if (tagIds != null && tagIds.length > 0) {
+            saveDocumentTags(documentId, tagIds);
+        }
+        
         log.info("文档更新成功：{}", title);
         return document;
     }
@@ -124,6 +149,7 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
     }
 
     @Override
+    @Transactional
     public boolean deleteDocument(Long documentId, Long userId) {
         Document document = getById(documentId);
         if (document == null) {
@@ -133,6 +159,9 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         if (!document.getUserId().equals(userId)) {
             throw new BusinessException("无权限删除此文档");
         }
+        
+        // 删除文档标签关联
+        documentTagMapper.deleteByDocumentId(documentId);
         
         removeById(documentId);
         log.info("文档删除成功：{}", document.getTitle());
@@ -175,6 +204,21 @@ public class DocumentServiceImpl extends ServiceImpl<DocumentMapper, Document> i
         statistics.put("updatedAt", document.getUpdatedAt());
         
         return statistics;
+    }
+    
+    /**
+     * 保存文档标签关联
+     */
+    private void saveDocumentTags(Long documentId, Long[] tagIds) {
+        List<DocumentTag> documentTags = new ArrayList<>();
+        for (Long tagId : tagIds) {
+            DocumentTag documentTag = new DocumentTag();
+            documentTag.setDocumentId(documentId);
+            documentTag.setTagId(tagId);
+            documentTag.setCreatedAt(LocalDateTime.now());
+            documentTags.add(documentTag);
+        }
+        documentTagMapper.batchInsert(documentTags);
     }
     
 }

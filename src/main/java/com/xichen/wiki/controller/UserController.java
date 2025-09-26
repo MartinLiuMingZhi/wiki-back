@@ -4,6 +4,7 @@ import com.xichen.wiki.common.Result;
 import com.xichen.wiki.dto.UserUpdateRequest;
 import com.xichen.wiki.entity.User;
 import com.xichen.wiki.service.UserService;
+import com.xichen.wiki.util.JwtUtil;
 import com.xichen.wiki.util.UserContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,6 +34,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Operation(summary = "获取当前用户信息", description = "获取当前登录用户的详细信息")
     @GetMapping("/me")
@@ -96,8 +100,7 @@ public class UserController {
             @RequestHeader("Authorization") String token,
             @Valid @RequestBody ChangePasswordRequest request) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
         return Result.success("密码修改成功");
@@ -116,8 +119,7 @@ public class UserController {
             @RequestHeader("Authorization") String token,
             @Valid @RequestBody UpdateAvatarRequest request) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         User user = userService.updateAvatar(userId, request.getAvatarUrl());
         
@@ -137,8 +139,7 @@ public class UserController {
     @Operation(summary = "获取用户统计", description = "获取用户统计信息")
     @GetMapping("/me/statistics")
     public Result<Map<String, Object>> getUserStatistics(@RequestHeader("Authorization") String token) {
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Map<String, Object> statistics = userService.getUserStatistics(userId);
         return Result.success(statistics);
@@ -151,8 +152,7 @@ public class UserController {
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Page<Map<String, Object>> activities = userService.getUserActivities(userId, page, size);
         return Result.success(activities);

@@ -84,6 +84,25 @@ public class JwtUtil {
     }
 
     /**
+     * 从Authorization header中提取用户ID
+     * 自动处理"Bearer "前缀
+     */
+    public Long getUserIdFromAuthorizationHeader(String authorizationHeader) {
+        try {
+            if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+                throw new RuntimeException("无效的Authorization header格式");
+            }
+            
+            // 移除 "Bearer " 前缀
+            String token = authorizationHeader.substring(7);
+            return getUserIdFromToken(token);
+        } catch (Exception e) {
+            log.error("从Authorization header中提取用户ID失败: {}", e.getMessage());
+            throw new RuntimeException("无效的认证token");
+        }
+    }
+
+    /**
      * 从令牌中获取过期时间
      */
     public Date getExpirationDateFromToken(String token) {

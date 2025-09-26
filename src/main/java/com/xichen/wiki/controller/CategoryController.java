@@ -3,6 +3,7 @@ package com.xichen.wiki.controller;
 import com.xichen.wiki.common.Result;
 import com.xichen.wiki.entity.Category;
 import com.xichen.wiki.service.CategoryService;
+import com.xichen.wiki.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -28,6 +29,9 @@ public class CategoryController {
 
     @Autowired
     private CategoryService categoryService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Operation(summary = "创建分类", description = "创建新的分类")
     @PostMapping
@@ -35,8 +39,7 @@ public class CategoryController {
             @RequestHeader("Authorization") String token,
             @Valid @RequestBody CreateCategoryRequest request) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Category category = categoryService.createCategory(
                 userId,
@@ -54,8 +57,7 @@ public class CategoryController {
             @Parameter(description = "分类ID") @PathVariable @NotNull Long id,
             @Valid @RequestBody UpdateCategoryRequest request) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Category category = categoryService.updateCategory(
                 id,
@@ -73,8 +75,7 @@ public class CategoryController {
             @RequestHeader("Authorization") String token,
             @Parameter(description = "分类类型") @RequestParam @NotBlank String type) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         List<Category> categories = categoryService.getCategoryTree(userId, type);
         return Result.success(categories);
@@ -96,8 +97,7 @@ public class CategoryController {
             @Parameter(description = "分类ID") @PathVariable @NotNull Long id,
             @Parameter(description = "分类类型") @RequestParam @NotBlank String type) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         List<Category> categories = categoryService.getChildCategories(id, userId, type);
         return Result.success(categories);
@@ -109,8 +109,7 @@ public class CategoryController {
             @RequestHeader("Authorization") String token,
             @Parameter(description = "分类ID") @PathVariable @NotNull Long id) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Category category = categoryService.getCategoryDetail(id, userId);
         return Result.success(category);
@@ -122,8 +121,7 @@ public class CategoryController {
             @RequestHeader("Authorization") String token,
             @Parameter(description = "分类ID") @PathVariable @NotNull Long id) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         categoryService.deleteCategory(id, userId);
         return Result.success("删除成功");

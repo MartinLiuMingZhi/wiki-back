@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.xichen.wiki.common.Result;
 import com.xichen.wiki.entity.Document;
 import com.xichen.wiki.service.DocumentService;
+import com.xichen.wiki.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,7 +17,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.Map;
 
 /**
  * 文档控制器
@@ -30,6 +30,9 @@ public class DocumentController {
 
     @Autowired
     private DocumentService documentService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Operation(summary = "创建文档", description = "创建新的文档")
     @PostMapping
@@ -37,15 +40,14 @@ public class DocumentController {
             @RequestHeader("Authorization") String token,
             @Valid @RequestBody CreateDocumentRequest request) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Document document = documentService.createDocument(
                 userId,
                 request.getTitle(),
                 request.getContent(),
                 request.getCategoryId(),
-                null // TODO: 添加tagIds支持
+                request.getTagIds()
         );
         
         return Result.success("创建成功", document);
@@ -60,8 +62,7 @@ public class DocumentController {
             @Parameter(description = "分类ID") @RequestParam(required = false) Long categoryId,
             @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Page<Document> documents = documentService.getUserDocuments(userId, page, size, keyword);
         return Result.success(documents);
@@ -73,8 +74,7 @@ public class DocumentController {
             @RequestHeader("Authorization") String token,
             @Parameter(description = "文档ID") @PathVariable @NotNull Long id) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Document document = documentService.getDocumentDetail(id, userId);
         return Result.success(document);
@@ -87,8 +87,7 @@ public class DocumentController {
             @Parameter(description = "文档ID") @PathVariable @NotNull Long id,
             @Valid @RequestBody UpdateDocumentRequest request) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Document document = documentService.updateDocument(
                 id,
@@ -96,7 +95,7 @@ public class DocumentController {
                 request.getTitle(),
                 request.getContent(),
                 request.getCategoryId(),
-                null // TODO: 添加tagIds支持
+                request.getTagIds()
         );
         
         return Result.success("更新成功", document);
@@ -108,8 +107,7 @@ public class DocumentController {
             @RequestHeader("Authorization") String token,
             @Parameter(description = "文档ID") @PathVariable @NotNull Long id) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         documentService.deleteDocument(id, userId);
         return Result.success("删除成功");
@@ -121,8 +119,7 @@ public class DocumentController {
             @RequestHeader("Authorization") String token,
             @Parameter(description = "文档ID") @PathVariable @NotNull Long id) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         documentService.toggleFavorite(id, userId);
         return Result.success("操作成功");
@@ -139,6 +136,8 @@ public class DocumentController {
         
         private Long categoryId;
         
+        private Long[] tagIds;
+        
         // Getters and Setters
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }
@@ -146,6 +145,8 @@ public class DocumentController {
         public void setContent(String content) { this.content = content; }
         public Long getCategoryId() { return categoryId; }
         public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+        public Long[] getTagIds() { return tagIds; }
+        public void setTagIds(Long[] tagIds) { this.tagIds = tagIds; }
     }
 
     /**
@@ -159,6 +160,8 @@ public class DocumentController {
         
         private Long categoryId;
         
+        private Long[] tagIds;
+        
         // Getters and Setters
         public String getTitle() { return title; }
         public void setTitle(String title) { this.title = title; }
@@ -166,6 +169,8 @@ public class DocumentController {
         public void setContent(String content) { this.content = content; }
         public Long getCategoryId() { return categoryId; }
         public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+        public Long[] getTagIds() { return tagIds; }
+        public void setTagIds(Long[] tagIds) { this.tagIds = tagIds; }
     }
 }
 

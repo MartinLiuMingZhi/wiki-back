@@ -2,6 +2,7 @@ package com.xichen.wiki.controller;
 
 import com.xichen.wiki.common.Result;
 import com.xichen.wiki.service.FileService;
+import com.xichen.wiki.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,6 +38,9 @@ public class FileController {
 
     @Autowired
     private FileService fileService;
+    
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Operation(summary = "上传文件", description = "上传文件到服务器")
     @PostMapping("/upload")
@@ -45,8 +49,7 @@ public class FileController {
             @Parameter(description = "文件") @RequestParam("file") @NotNull MultipartFile file,
             @Parameter(description = "文件夹") @RequestParam(defaultValue = "general") String folder) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Map<String, Object> result = fileService.uploadFile(file, folder, userId);
         return Result.success(result);
@@ -58,8 +61,7 @@ public class FileController {
             @RequestHeader("Authorization") String token,
             @Valid @RequestBody GenerateUploadUrlRequest request) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Map<String, Object> result = fileService.generateUploadUrl(
                 request.getFileName(),
@@ -76,8 +78,7 @@ public class FileController {
             @RequestHeader("Authorization") String token,
             @Valid @RequestBody ConfirmUploadRequest request) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         fileService.confirmUpload(request.getFileKey(), request.getFileSize(), userId);
         return Result.success("上传确认成功");
@@ -89,8 +90,7 @@ public class FileController {
             @RequestHeader("Authorization") String token,
             @Parameter(description = "文件键") @PathVariable @NotBlank String fileKey) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         try {
             // 获取文件信息
@@ -146,8 +146,7 @@ public class FileController {
             @RequestHeader("Authorization") String token,
             @Parameter(description = "文件键") @PathVariable @NotBlank String fileKey) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Map<String, Object> fileInfo = fileService.getFileInfo(fileKey, userId);
         return Result.success(fileInfo);
@@ -159,8 +158,7 @@ public class FileController {
             @RequestHeader("Authorization") String token,
             @Parameter(description = "文件键") @PathVariable @NotBlank String fileKey) {
         
-        // 这里应该从token中解析用户ID，暂时使用固定值
-        Long userId = 1L; // TODO: 从JWT token中解析用户ID
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         fileService.deleteFile(fileKey, userId);
         return Result.success("删除成功");

@@ -16,6 +16,10 @@ on:
         - staging
         - production
 
+permissions:
+  contents: write  # 推送Docker镜像需要
+  packages: write  # 推送Docker镜像需要
+
 env:
   JAVA_VERSION: '17'
   MAVEN_VERSION: '3.9.6'

@@ -4,6 +4,9 @@ on:
   pull_request:
     types: [opened, synchronize, labeled]
 
+permissions:
+  pull-requests: write  # 自动合并PR需要
+
 jobs:
   # 检查依赖更新安全性
   check-dependency-safety:
@@ -73,6 +76,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         target: patch  # 仅自动合并patch版本
         merge-method: squash
+        merge-commit-message: "chore: auto-merge dependabot PR"
         
     - name: Notify merge
       if: success()

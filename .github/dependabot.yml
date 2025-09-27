@@ -19,6 +19,8 @@ updates:
       - "dependencies"
       - "java"
       - "auto-merge"
+    # 自动合并配置
+    auto-merge: true
     # 自动合并策略 - 仅允许安全的更新
     allow:
       - dependency-type: "direct"
@@ -79,6 +81,8 @@ updates:
       - "dependencies"
       - "github-actions"
       - "auto-merge"
+    # 自动合并配置
+    auto-merge: true
     # 自动合并策略
     allow:
       - dependency-type: "direct"
@@ -106,6 +110,8 @@ updates:
       - "dependencies"
       - "docker"
       - "auto-merge"
+    # 自动合并配置
+    auto-merge: true
     # 自动合并策略
     allow:
       - dependency-type: "direct"

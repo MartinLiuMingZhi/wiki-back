@@ -88,6 +88,9 @@ public class VerificationCodeServiceImpl implements IVerificationCodeService {
             log.info("验证码发送成功，邮箱: {}", email);
             
             return true;
+        } catch (VerificationCodeException e) {
+            // 重新抛出业务异常
+            throw e;
         } catch (Exception e) {
             log.error("发送验证码失败，邮箱: {}, 类型: {}, 错误: {}", email, type, e.getMessage(), e);
             return false;

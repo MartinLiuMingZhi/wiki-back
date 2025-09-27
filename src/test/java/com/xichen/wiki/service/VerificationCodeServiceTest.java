@@ -4,6 +4,7 @@ import com.xichen.wiki.config.VerificationCodeProperties;
 import com.xichen.wiki.constant.VerificationCodeConstants;
 import com.xichen.wiki.exception.VerificationCodeException;
 import com.xichen.wiki.mapper.VerificationCodeMapper;
+import com.xichen.wiki.service.impl.VerificationCodeServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -12,6 +13,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
+import org.springframework.test.context.ActiveProfiles;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -24,6 +26,7 @@ import static org.mockito.Mockito.*;
  * @since 2024-09-25
  */
 @ExtendWith(MockitoExtension.class)
+@ActiveProfiles("test")
 class VerificationCodeServiceTest {
     
     @Mock
@@ -42,7 +45,7 @@ class VerificationCodeServiceTest {
     private VerificationCodeProperties properties;
     
     @InjectMocks
-    private IVerificationCodeService verificationCodeService;
+    private VerificationCodeServiceImpl verificationCodeService;
     
     private static final String TEST_EMAIL = "test@example.com";
     private static final String TEST_TYPE = VerificationCodeConstants.TYPE_REGISTER;
@@ -50,10 +53,11 @@ class VerificationCodeServiceTest {
     
     @BeforeEach
     void setUp() {
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(properties.getLength()).thenReturn(6);
-        when(properties.getExpireMinutes()).thenReturn(5);
-        when(properties.getRateLimitMinutes()).thenReturn(1);
+        // 使用lenient stubbing避免不必要的stubbing错误
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(properties.getLength()).thenReturn(6);
+        lenient().when(properties.getExpireMinutes()).thenReturn(5);
+        lenient().when(properties.getRateLimitMinutes()).thenReturn(1);
     }
     
     @Test
@@ -68,7 +72,7 @@ class VerificationCodeServiceTest {
     
     @Test
     void testSendVerificationCode_Success() {
-        // 模拟Redis操作
+        // 模拟Redis操作 - 没有频率限制
         when(redisTemplate.hasKey(anyString())).thenReturn(false);
         
         // 执行测试
@@ -76,13 +80,17 @@ class VerificationCodeServiceTest {
         
         // 验证结果
         assertTrue(result);
-        verify(redisTemplate).opsForValue();
+        // 验证Redis操作被调用了2次（存储验证码和设置频率限制）
+        verify(redisTemplate, times(2)).opsForValue();
         verify(emailService).sendVerificationCode(eq(TEST_EMAIL), anyString(), eq(TEST_TYPE));
     }
     
     @Test
     void testSendVerificationCode_RateLimited() {
-        // 模拟频率限制
+        // 重置mock以确保测试隔离
+        reset(redisTemplate, valueOperations);
+        
+        // 模拟频率限制 - Redis中存在限制键
         when(redisTemplate.hasKey(anyString())).thenReturn(true);
         
         // 执行测试并验证异常
@@ -93,6 +101,12 @@ class VerificationCodeServiceTest {
     
     @Test
     void testVerifyCode_Success() {
+        // 重置mock以确保测试隔离
+        reset(redisTemplate, valueOperations);
+        
+        // 重新设置基本的mock
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        
         // 模拟Redis验证成功
         when(valueOperations.get(anyString())).thenReturn(TEST_CODE);
         
@@ -106,6 +120,12 @@ class VerificationCodeServiceTest {
     
     @Test
     void testVerifyCode_InvalidCode() {
+        // 重置mock以确保测试隔离
+        reset(redisTemplate, valueOperations);
+        
+        // 重新设置基本的mock
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        
         // 模拟Redis验证失败
         when(valueOperations.get(anyString())).thenReturn("654321");
         
@@ -118,6 +138,12 @@ class VerificationCodeServiceTest {
     
     @Test
     void testVerifyCode_CodeNotFound() {
+        // 重置mock以确保测试隔离
+        reset(redisTemplate, valueOperations);
+        
+        // 重新设置基本的mock
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        
         // 模拟Redis中没有验证码
         when(valueOperations.get(anyString())).thenReturn(null);
         

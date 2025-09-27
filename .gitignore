@@ -35,6 +35,8 @@ build/
 ### 敏感配置文件 ###
 # 本地开发配置文件
 application-*.properties
+# 测试配置文件（包含敏感信息）
+src/test/resources/application-test.properties
 # 加密密钥文件
 *.key
 *.secret

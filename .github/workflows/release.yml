@@ -2,7 +2,7 @@ name: 🚀 Release Workflow
 
 on:
   push:
-    branches: [ v1.0.0/develop ]
+    branches: [ v*/develop ]
   workflow_dispatch:
     inputs:
       version:

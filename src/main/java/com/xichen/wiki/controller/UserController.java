@@ -8,8 +8,10 @@ import com.xichen.wiki.dto.UserUpdateRequest;
 import com.xichen.wiki.entity.User;
 import com.xichen.wiki.service.UserService;
 import com.xichen.wiki.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,10 +40,12 @@ public class UserController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Operation(summary = "获取当前用户信息", description = "获取当前登录用户的详细信息")
+    @Operation(summary = "获取当前用户信息", description = "获取当前登录用户的详细信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/me")
-    public Result<Map<String, Object>> getCurrentUser(@RequestHeader("Authorization") String token) {
-        // 从JWT token中解析用户ID
+    public Result<Map<String, Object>> getCurrentUser(HttpServletRequest request) {
+        // 从请求头中获取JWT token
+        String token = request.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -65,10 +69,12 @@ public class UserController {
         return Result.success(data);
     }
 
-    @Operation(summary = "更新用户信息", description = "更新当前用户的基本信息")
+    @Operation(summary = "更新用户信息", description = "更新当前用户的基本信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/me")
-    public Result<Map<String, Object>> updateCurrentUser(@RequestHeader("Authorization") String token, @Valid @RequestBody UserUpdateRequest request) {
-        // 从JWT token中解析用户ID
+    public Result<Map<String, Object>> updateCurrentUser(@Valid @RequestBody UserUpdateRequest request, HttpServletRequest httpRequest) {
+        // 从请求头中获取JWT token
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -94,12 +100,14 @@ public class UserController {
         return Result.success("更新成功", data);
     }
 
-    @Operation(summary = "修改密码", description = "修改用户密码")
+    @Operation(summary = "修改密码", description = "修改用户密码", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/me/password")
     public Result<String> changePassword(
-            @RequestHeader("Authorization") String token,
-            @Valid @RequestBody ChangePasswordRequest request) {
+            @Valid @RequestBody ChangePasswordRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         userService.changePassword(userId, request.getOldPassword(), request.getNewPassword());
@@ -113,12 +121,14 @@ public class UserController {
         return Result.success("密码重置成功");
     }
 
-    @Operation(summary = "更新头像", description = "更新用户头像")
+    @Operation(summary = "更新头像", description = "更新用户头像", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/me/avatar")
     public Result<Map<String, Object>> updateAvatar(
-            @RequestHeader("Authorization") String token,
-            @Valid @RequestBody UpdateAvatarRequest request) {
+            @Valid @RequestBody UpdateAvatarRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         User user = userService.updateAvatar(userId, request.getAvatarUrl());
@@ -136,22 +146,26 @@ public class UserController {
         return Result.success("头像更新成功", data);
     }
 
-    @Operation(summary = "获取用户统计", description = "获取用户统计信息")
+    @Operation(summary = "获取用户统计", description = "获取用户统计信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/me/statistics")
-    public Result<Map<String, Object>> getUserStatistics(@RequestHeader("Authorization") String token) {
+    public Result<Map<String, Object>> getUserStatistics(HttpServletRequest httpRequest) {
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Map<String, Object> statistics = userService.getUserStatistics(userId);
         return Result.success(statistics);
     }
 
-    @Operation(summary = "获取用户活动", description = "获取用户活动记录")
+    @Operation(summary = "获取用户活动", description = "获取用户活动记录", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/me/activities")
     public Result<Page<Map<String, Object>>> getUserActivities(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Page<Map<String, Object>> activities = userService.getUserActivities(userId, page, size);

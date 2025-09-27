@@ -9,7 +9,9 @@ import com.xichen.wiki.service.DocumentService;
 import com.xichen.wiki.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -35,12 +37,14 @@ public class DocumentController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Operation(summary = "创建文档", description = "创建新的文档")
+    @Operation(summary = "创建文档", description = "创建新的文档", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
     public Result<Document> createDocument(
-            @RequestHeader("Authorization") String token,
-            @Valid @RequestBody CreateDocumentRequest request) {
+            @Valid @RequestBody CreateDocumentRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Document document = documentService.createDocument(
@@ -54,40 +58,46 @@ public class DocumentController {
         return Result.success("创建成功", document);
     }
 
-    @Operation(summary = "获取文档列表", description = "分页获取用户的文档列表")
+    @Operation(summary = "获取文档列表", description = "分页获取用户的文档列表", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
     public Result<Page<Document>> getDocuments(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
             @Parameter(description = "分类ID") @RequestParam(required = false) Long categoryId,
-            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
+            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Page<Document> documents = documentService.getUserDocuments(userId, page, size, keyword);
         return Result.success(documents);
     }
 
-    @Operation(summary = "获取文档详情", description = "根据ID获取文档详细信息")
+    @Operation(summary = "获取文档详情", description = "根据ID获取文档详细信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{id}")
     public Result<Document> getDocumentDetail(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "文档ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "文档ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Document document = documentService.getDocumentDetail(id, userId);
         return Result.success(document);
     }
 
-    @Operation(summary = "更新文档", description = "更新文档内容")
+    @Operation(summary = "更新文档", description = "更新文档内容", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/{id}")
     public Result<Document> updateDocument(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "文档ID") @PathVariable @NotNull Long id,
-            @Valid @RequestBody UpdateDocumentRequest request) {
+            @Valid @RequestBody UpdateDocumentRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Document document = documentService.updateDocument(
@@ -102,24 +112,28 @@ public class DocumentController {
         return Result.success("更新成功", document);
     }
 
-    @Operation(summary = "删除文档", description = "删除指定文档")
+    @Operation(summary = "删除文档", description = "删除指定文档", 
+               security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/{id}")
     public Result<String> deleteDocument(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "文档ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "文档ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         documentService.deleteDocument(id, userId);
         return Result.success("删除成功");
     }
 
-    @Operation(summary = "切换收藏状态", description = "切换文档的收藏状态")
+    @Operation(summary = "切换收藏状态", description = "切换文档的收藏状态", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/{id}/favorite")
     public Result<String> toggleFavorite(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "文档ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "文档ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         documentService.toggleFavorite(id, userId);

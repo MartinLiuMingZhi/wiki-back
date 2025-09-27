@@ -2,10 +2,19 @@ package com.xichen.wiki.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 /**
  * 发送验证码请求DTO
+ * 
+ * @author xichen
+ * @since 2024-09-27
  */
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class SendVerificationCodeRequest {
     
     @NotBlank(message = "邮箱不能为空")
@@ -13,27 +22,4 @@ public class SendVerificationCodeRequest {
     private String email;
     
     private String type; // 验证码类型：register, login
-    
-    public SendVerificationCodeRequest() {}
-    
-    public SendVerificationCodeRequest(String email, String type) {
-        this.email = email;
-        this.type = type;
-    }
-    
-    public String getEmail() {
-        return email;
-    }
-    
-    public void setEmail(String email) {
-        this.email = email;
-    }
-    
-    public String getType() {
-        return type;
-    }
-    
-    public void setType(String type) {
-        this.type = type;
-    }
 }

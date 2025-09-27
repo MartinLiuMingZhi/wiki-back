@@ -8,8 +8,10 @@ import com.xichen.wiki.dto.UpdateBookmarkRequest;
 import com.xichen.wiki.entity.Bookmark;
 import com.xichen.wiki.service.BookmarkService;
 import com.xichen.wiki.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,9 +40,11 @@ public class BookmarkController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Operation(summary = "创建书签", description = "为电子书创建书签")
+    @Operation(summary = "创建书签", description = "为电子书创建书签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
-    public Result<Bookmark> createBookmark(@RequestHeader("Authorization") String token, @Valid @RequestBody CreateBookmarkRequest request) {
+    public Result<Bookmark> createBookmark(@Valid @RequestBody CreateBookmarkRequest request, HttpServletRequest httpRequest) {
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -60,13 +64,15 @@ public class BookmarkController {
         }
     }
 
-    @Operation(summary = "更新书签", description = "更新书签内容")
+    @Operation(summary = "更新书签", description = "更新书签内容", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/{id}")
     public Result<Bookmark> updateBookmark(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "书签ID") @PathVariable @NotNull Long id,
-            @Valid @RequestBody UpdateBookmarkRequest request) {
+            @Valid @RequestBody UpdateBookmarkRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -81,12 +87,14 @@ public class BookmarkController {
         }
     }
 
-    @Operation(summary = "获取书签详情", description = "获取指定书签的详细信息")
+    @Operation(summary = "获取书签详情", description = "获取指定书签的详细信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{id}")
     public Result<Bookmark> getBookmarkDetail(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "书签ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "书签ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -104,14 +112,16 @@ public class BookmarkController {
         }
     }
 
-    @Operation(summary = "获取用户书签列表", description = "分页获取用户的所有书签")
+    @Operation(summary = "获取用户书签列表", description = "分页获取用户的所有书签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
     public Result<Page<Bookmark>> getUserBookmarks(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
-            @Parameter(description = "电子书ID") @RequestParam(required = false) Long ebookId) {
+            @Parameter(description = "电子书ID") @RequestParam(required = false) Long ebookId,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -126,12 +136,14 @@ public class BookmarkController {
         }
     }
 
-    @Operation(summary = "获取电子书书签", description = "获取指定电子书的所有书签")
+    @Operation(summary = "获取电子书书签", description = "获取指定电子书的所有书签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/ebook/{ebookId}")
     public Result<List<Bookmark>> getEbookBookmarks(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "电子书ID") @PathVariable @NotNull Long ebookId) {
+            @Parameter(description = "电子书ID") @PathVariable @NotNull Long ebookId,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -146,12 +158,14 @@ public class BookmarkController {
         }
     }
 
-    @Operation(summary = "删除书签", description = "删除指定的书签")
+    @Operation(summary = "删除书签", description = "删除指定的书签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/{id}")
     public Result<Object> deleteBookmark(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "书签ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "书签ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -166,9 +180,11 @@ public class BookmarkController {
         }
     }
 
-    @Operation(summary = "批量删除书签", description = "批量删除多个书签")
+    @Operation(summary = "批量删除书签", description = "批量删除多个书签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/batch")
-    public Result<Object> deleteBookmarks(@RequestHeader("Authorization") String token, @Valid @RequestBody BatchDeleteBookmarkRequest request) {
+    public Result<Object> deleteBookmarks(@Valid @RequestBody BatchDeleteBookmarkRequest request, HttpServletRequest httpRequest) {
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -183,14 +199,16 @@ public class BookmarkController {
         }
     }
 
-    @Operation(summary = "搜索书签", description = "根据关键词搜索书签")
+    @Operation(summary = "搜索书签", description = "根据关键词搜索书签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/search")
     public Result<Page<Bookmark>> searchBookmarks(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -207,9 +225,11 @@ public class BookmarkController {
         }
     }
 
-    @Operation(summary = "获取书签统计", description = "获取用户书签统计信息")
+    @Operation(summary = "获取书签统计", description = "获取用户书签统计信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/statistics")
-    public Result<Object> getBookmarkStatistics(@RequestHeader("Authorization") String token) {
+    public Result<Object> getBookmarkStatistics(HttpServletRequest httpRequest) {
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");

@@ -106,6 +106,10 @@ public class SearchServiceImpl implements SearchService {
         Set<Object> popularTerms = redisTemplate.opsForZSet()
                 .reverseRange(RedisKeyUtil.getPopularSearchTermsKey(), 0, limit - 1);
 
+        if (popularTerms == null) {
+            return new ArrayList<>();
+        }
+
         return popularTerms.stream()
                 .map(Object::toString)
                 .collect(Collectors.toList());

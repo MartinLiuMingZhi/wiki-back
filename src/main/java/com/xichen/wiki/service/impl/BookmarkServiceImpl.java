@@ -153,7 +153,7 @@ public class BookmarkServiceImpl extends ServiceImpl<BookmarkMapper, Bookmark> i
         }
         
         LambdaQueryWrapper<Bookmark> wrapper = new LambdaQueryWrapper<>();
-        wrapper.in(Bookmark::getId, bookmarkIds)
+        wrapper.in(Bookmark::getId, (Object[]) bookmarkIds)
                 .eq(Bookmark::getUserId, userId);
         
         remove(wrapper);

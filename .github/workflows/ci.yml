@@ -53,8 +53,12 @@ jobs:
           ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
           ${{ runner.os }}-m2-
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run code quality checks
       run: |
+        echo "🚀 Running code quality checks..."
         ./mvnw clean compile -T 1C
         ./mvnw spotbugs:check -T 1C
         ./mvnw checkstyle:check -T 1C
@@ -128,8 +132,12 @@ jobs:
         echo "Waiting for Redis to be ready..."
         timeout 60 bash -c 'until redis-cli -h 127.0.0.1 -p 6379 ping; do sleep 1; done'
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run unit tests
       run: |
+        echo "🚀 Running unit tests..."
         ./mvnw clean test -T 1C
       env:
         SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/wiki_test?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
@@ -171,8 +179,12 @@ jobs:
           ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
           ${{ runner.os }}-m2-
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run integration tests
       run: |
+        echo "🚀 Running integration tests..."
         ./mvnw clean verify -P integration-tests -T 1C
       env:
         SPRING_PROFILES_ACTIVE: test
@@ -204,8 +216,12 @@ jobs:
           ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
           ${{ runner.os }}-m2-
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run performance tests
       run: |
+        echo "🚀 Running performance tests..."
         ./mvnw clean test -Dtest=*PerformanceTest -T 1C
       env:
         SPRING_PROFILES_ACTIVE: test
@@ -242,8 +258,12 @@ jobs:
           ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
           ${{ runner.os }}-m2-
         
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
     - name: Run OWASP dependency check
       run: |
+        echo "🚀 Running OWASP dependency check..."
         ./mvnw org.owasp:dependency-check-maven:check -T 1C
         
     - name: Upload security scan results
@@ -253,11 +273,61 @@ jobs:
         name: security-scan-results
         path: target/dependency-check-report.html
 
+  # 构建JAR包
+  build-jar:
+    name: Build JAR Package
+    runs-on: ubuntu-latest
+    needs: [code-quality, unit-tests, integration-tests, security-scan]
+    if: github.event_name == 'push'
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
+          ${{ runner.os }}-m2-
+        
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
+    - name: Build JAR package
+      run: |
+        echo "🚀 Building JAR package..."
+        ./mvnw clean package -DskipTests -T 1C
+        
+    - name: Upload JAR artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: jar-artifacts
+        path: target/*.jar
+        retention-days: 30
+        
+    - name: Upload test reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-reports
+        path: target/site/jacoco/
+        retention-days: 30
+
   # 构建Docker镜像
   build-docker:
     name: Build Docker Image
     runs-on: ubuntu-latest
-    needs: [code-quality, unit-tests, integration-tests, security-scan]
+    needs: [build-jar]
     if: github.event_name == 'push'
     timeout-minutes: 30
     
@@ -305,7 +375,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build-docker, performance-tests]
+    needs: [build-jar, build-docker, performance-tests]
     if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
     environment: staging
     timeout-minutes: 10
@@ -336,7 +406,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    needs: [build-docker, performance-tests]
+    needs: [build-jar, build-docker, performance-tests]
     if: (github.event_name == 'release' && github.event.action == 'published') || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production')
     environment: production
     timeout-minutes: 15
@@ -367,7 +437,7 @@ jobs:
   notify-status:
     name: Notify Status
     runs-on: ubuntu-latest
-    needs: [code-quality, unit-tests, integration-tests, security-scan, build-docker]
+    needs: [code-quality, unit-tests, integration-tests, security-scan, build-jar, build-docker]
     if: always()
     
     steps:

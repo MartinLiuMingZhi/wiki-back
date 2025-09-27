@@ -9,6 +9,9 @@ COPY pom.xml .
 COPY mvnw .
 COPY .mvn .mvn
 
+# 设置Maven wrapper执行权限
+RUN chmod +x ./mvnw
+
 # 下载依赖（利用Docker缓存层）
 RUN ./mvnw dependency:go-offline -B
 

@@ -1,6 +1,6 @@
 # 📚 Wiki Knowledge Management System
 
-[![CI/CD](https://github.com/xichen/wiki/workflows/CI%2FCD/badge.svg)](https://github.com/xichen/wiki/actions)
+[![CI/CD](https://github.com/MartinLiuMingZhi/wiki-back/workflows/unified-ci-cd.yml/badge.svg)](https://github.com/MartinLiuMingZhi/wiki-back/actions)
 [![Dependabot](https://img.shields.io/badge/dependabot-enabled-blue.svg)](https://github.com/xichen/wiki/security/dependabot)
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://openjdk.java.net/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.6-brightgreen.svg)](https://spring.io/projects/spring-boot)

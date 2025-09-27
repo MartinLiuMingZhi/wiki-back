@@ -22,6 +22,8 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -86,17 +88,17 @@ public class UserController {
                 request.getEmail(),
                 request.getAvatarUrl()
         );
-        
-        Map<String, Object> data = Map.of(
-                "id", user.getId(),
-                "username", user.getUsername(),
-                "email", user.getEmail(),
-                "avatarUrl", user.getAvatarUrl(),
-                "status", user.getStatus(),
-                "createdAt", user.getCreatedAt(),
-                "updatedAt", user.getUpdatedAt()
-        );
-        
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("username", user.getUsername());
+        data.put("email", user.getEmail());
+        data.put("avatarUrl", user.getAvatarUrl());
+        data.put("status", user.getStatus());
+        data.put("createdAt", user.getCreatedAt());
+        data.put("updatedAt", user.getUpdatedAt());
+
+
         return Result.success("更新成功", data);
     }
 
@@ -132,17 +134,16 @@ public class UserController {
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         User user = userService.updateAvatar(userId, request.getAvatarUrl());
-        
-        Map<String, Object> data = Map.of(
-                "id", user.getId(),
-                "username", user.getUsername(),
-                "email", user.getEmail(),
-                "avatarUrl", user.getAvatarUrl(),
-                "status", user.getStatus(),
-                "createdAt", user.getCreatedAt(),
-                "updatedAt", user.getUpdatedAt()
-        );
-        
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("username", user.getUsername());
+        data.put("email", user.getEmail());
+        data.put("avatarUrl", user.getAvatarUrl());
+        data.put("status", user.getStatus());
+        data.put("createdAt", user.getCreatedAt());
+        data.put("updatedAt", user.getUpdatedAt());
+
         return Result.success("头像更新成功", data);
     }
 

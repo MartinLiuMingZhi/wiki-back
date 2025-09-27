@@ -57,17 +57,16 @@ public class UserController {
         if (user == null) {
             return Result.error("用户不存在");
         }
-        
-        Map<String, Object> data = Map.of(
-                "id", user.getId(),
-                "username", user.getUsername(),
-                "email", user.getEmail(),
-                "avatarUrl", user.getAvatarUrl(),
-                "status", user.getStatus(),
-                "createdAt", user.getCreatedAt(),
-                "updatedAt", user.getUpdatedAt()
-        );
-        
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("id", user.getId());
+        data.put("username", user.getUsername());
+        data.put("email", user.getEmail());
+        data.put("avatarUrl", user.getAvatarUrl());
+        data.put("status", user.getStatus());
+        data.put("createdAt", user.getCreatedAt());
+        data.put("updatedAt", user.getUpdatedAt());
+
         return Result.success(data);
     }
 

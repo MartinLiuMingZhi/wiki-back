@@ -1,6 +1,6 @@
 version: 2
 updates:
-  # Maven依赖更新 - 核心依赖
+  # Maven依赖更新
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
@@ -19,20 +19,14 @@ updates:
       - "dependencies"
       - "java"
       - "auto-merge"
-    # 自动合并配置
-    auto-merge: true
-    # 自动合并策略 - 仅允许安全的更新
+    # 仅允许直接依赖更新
     allow:
       - dependency-type: "direct"
     ignore:
-      # 忽略主要版本更新（需要手动审查）
+      # 忽略主要版本更新
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
-      # 忽略间接依赖（容易产生冲突）
-      - dependency-name: "*"
-        update-types: ["version-update:semver-minor", "version-update:semver-patch"]
-        dependency-type: "indirect"
-      # 忽略核心框架依赖（容易产生兼容性问题）
+      # 忽略核心框架依赖
       - dependency-name: "org.springframework.boot:spring-boot-starter"
       - dependency-name: "org.springframework.boot:spring-boot-starter-web"
       - dependency-name: "org.springframework.boot:spring-boot-starter-security"
@@ -52,16 +46,7 @@ updates:
       - dependency-name: "com.qiniu:qiniu-java-sdk"
       - dependency-name: "com.alibaba:fastjson"
       - dependency-name: "com.github.ulisesbocchio:jasypt-spring-boot-starter"
-      # 忽略开发工具依赖
-      - dependency-name: "com.github.spotbugs:spotbugs-maven-plugin"
-      - dependency-name: "org.apache.maven.plugins:maven-checkstyle-plugin"
-      - dependency-name: "org.apache.maven.plugins:maven-pmd-plugin"
-      - dependency-name: "org.owasp:dependency-check-maven"
-      - dependency-name: "org.jacoco:jacoco-maven-plugin"
-      - dependency-name: "org.apache.maven.plugins:maven-compiler-plugin"
-      - dependency-name: "org.apache.maven.plugins:maven-surefire-plugin"
-      - dependency-name: "org.apache.maven.plugins:maven-failsafe-plugin"
-        
+
   # GitHub Actions更新
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -81,9 +66,7 @@ updates:
       - "dependencies"
       - "github-actions"
       - "auto-merge"
-    # 自动合并配置
-    auto-merge: true
-    # 自动合并策略
+    # 仅允许直接依赖更新
     allow:
       - dependency-type: "direct"
     ignore:
@@ -110,9 +93,7 @@ updates:
       - "dependencies"
       - "docker"
       - "auto-merge"
-    # 自动合并配置
-    auto-merge: true
-    # 自动合并策略
+    # 仅允许直接依赖更新
     allow:
       - dependency-type: "direct"
     ignore:

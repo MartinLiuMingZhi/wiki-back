@@ -3,9 +3,9 @@ name: 🚀 Unified CI/CD Pipeline
 on:
   # 主要触发条件
   push:
-    branches: [ main, develop ]
+    branches: [ main, v*/develop ]
   pull_request:
-    branches: [ main, develop ]
+    branches: [ main, v*/develop ]
   workflow_dispatch:
     inputs:
       environment:

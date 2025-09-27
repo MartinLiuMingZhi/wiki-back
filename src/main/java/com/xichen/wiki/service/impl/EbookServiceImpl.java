@@ -294,7 +294,7 @@ public class EbookServiceImpl extends ServiceImpl<EbookMapper, Ebook> implements
         ebook.setDownloadCount(0);
         ebook.setViewCount(0);
         ebook.setLastReadPage(0);
-        ebook.setTotalPages(0);
+        ebook.setPageCount(0);
         ebook.setCreatedAt(LocalDateTime.now());
         ebook.setUpdatedAt(LocalDateTime.now());
         

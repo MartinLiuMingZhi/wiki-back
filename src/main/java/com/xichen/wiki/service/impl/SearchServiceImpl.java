@@ -18,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -283,7 +284,7 @@ public class SearchServiceImpl implements SearchService {
         
         boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
         
-        switch (sortBy.toLowerCase()) {
+        switch (sortBy.toLowerCase(Locale.ROOT)) {
             case "title":
                 if (isAsc) {
                     wrapper.orderByAsc(Document::getTitle);
@@ -322,7 +323,7 @@ public class SearchServiceImpl implements SearchService {
         
         boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
         
-        switch (sortBy.toLowerCase()) {
+        switch (sortBy.toLowerCase(Locale.ROOT)) {
             case "title":
                 if (isAsc) {
                     wrapper.orderByAsc(Ebook::getTitle);
@@ -409,7 +410,7 @@ public class SearchServiceImpl implements SearchService {
             if (historyObj != null) {
                 return historyObj.stream()
                         .map(Object::toString)
-                        .filter(historyKeyword -> historyKeyword.toLowerCase().contains(keyword.toLowerCase()))
+                        .filter(historyKeyword -> historyKeyword.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT)))
                         .limit(3)
                         .collect(Collectors.toList());
             }
@@ -430,7 +431,7 @@ public class SearchServiceImpl implements SearchService {
             if (popularObj != null) {
                 return popularObj.stream()
                         .map(Object::toString)
-                        .filter(popularKeyword -> popularKeyword.toLowerCase().contains(keyword.toLowerCase()))
+                        .filter(popularKeyword -> popularKeyword.toLowerCase(Locale.ROOT).contains(keyword.toLowerCase(Locale.ROOT)))
                         .limit(3)
                         .collect(Collectors.toList());
             }

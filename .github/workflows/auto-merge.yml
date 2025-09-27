@@ -1,0 +1,261 @@
+name: Auto Merge Develop to Main
+
+on:
+  workflow_run:
+    workflows: ["Release Workflow"]
+    types: [completed]
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: 'Source branch to merge'
+        required: true
+        default: 'develop'
+        type: string
+      target_branch:
+        description: 'Target branch to merge into'
+        required: true
+        default: 'main'
+        type: string
+      merge_strategy:
+        description: 'Merge strategy'
+        required: true
+        default: 'no-ff'
+        type: choice
+        options:
+        - no-ff
+        - ff
+        - squash
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+env:
+  SOURCE_BRANCH: ${{ github.event.inputs.source_branch || 'develop' }}
+  TARGET_BRANCH: ${{ github.event.inputs.target_branch || 'main' }}
+  MERGE_STRATEGY: ${{ github.event.inputs.merge_strategy || 'no-ff' }}
+
+jobs:
+  # 检查工作流状态
+  check-workflow-status:
+    name: Check Workflow Status
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_run'
+    outputs:
+      should-merge: ${{ steps.check.outputs.should-merge }}
+      release-version: ${{ steps.check.outputs.release-version }}
+    
+    steps:
+    - name: Check workflow completion
+      id: check
+      run: |
+        echo "🔍 Checking workflow completion status..."
+        
+        # 检查Release工作流是否成功完成
+        if [ "${{ github.event.workflow_run.conclusion }}" = "success" ]; then
+          echo "should-merge=true" >> $GITHUB_OUTPUT
+          echo "✅ Release workflow completed successfully"
+        else
+          echo "should-merge=false" >> $GITHUB_OUTPUT
+          echo "❌ Release workflow failed or was cancelled"
+        fi
+        
+        # 尝试从工作流运行中提取版本信息
+        echo "release-version=unknown" >> $GITHUB_OUTPUT
+
+  # 自动合并分支
+  auto-merge:
+    name: Auto Merge Branches
+    runs-on: ubuntu-latest
+    needs: [check-workflow-status]
+    if: |
+      (github.event_name == 'workflow_dispatch') || 
+      (github.event_name == 'workflow_run' && needs.check-workflow-status.outputs.should-merge == 'true')
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Configure Git
+      run: |
+        git config --global user.name "GitHub Actions Auto-Merge"
+        git config --global user.email "actions@github.com"
+        git config --global pull.rebase false
+        git config --global merge.tool false
+        
+    - name: Pre-merge checks
+      id: pre-checks
+      run: |
+        echo "🔍 Performing pre-merge checks..."
+        
+        # 获取最新信息
+        git fetch origin
+        
+        # 检查源分支是否存在
+        if ! git show-ref --verify --quiet refs/remotes/origin/${{ env.SOURCE_BRANCH }}; then
+          echo "❌ Source branch ${{ env.SOURCE_BRANCH }} does not exist"
+          exit 1
+        fi
+        
+        # 检查目标分支是否存在
+        if ! git show-ref --verify --quiet refs/remotes/origin/${{ env.TARGET_BRANCH }}; then
+          echo "❌ Target branch ${{ env.TARGET_BRANCH }} does not exist"
+          exit 1
+        fi
+        
+        # 切换到目标分支
+        git checkout ${{ env.TARGET_BRANCH }}
+        git pull origin ${{ env.TARGET_BRANCH }}
+        
+        # 切换到源分支
+        git checkout ${{ env.SOURCE_BRANCH }}
+        git pull origin ${{ env.SOURCE_BRANCH }}
+        
+        # 检查是否已经合并
+        if git merge-base --is-ancestor ${{ env.SOURCE_BRANCH }} ${{ env.TARGET_BRANCH }}; then
+          echo "is-already-merged=true" >> $GITHUB_OUTPUT
+          echo "✅ ${{ env.SOURCE_BRANCH }} is already merged into ${{ env.TARGET_BRANCH }}"
+        else
+          echo "is-already-merged=false" >> $GITHUB_OUTPUT
+          echo "🔄 ${{ env.SOURCE_BRANCH }} needs to be merged into ${{ env.TARGET_BRANCH }}"
+        fi
+        
+        # 检查合并冲突
+        git checkout ${{ env.TARGET_BRANCH }}
+        if git merge-tree $(git merge-base ${{ env.SOURCE_BRANCH }} ${{ env.TARGET_BRANCH }}) ${{ env.SOURCE_BRANCH }} ${{ env.TARGET_BRANCH }} | grep -q "<<<<<<<"; then
+          echo "has-conflicts=true" >> $GITHUB_OUTPUT
+          echo "⚠️ Merge conflicts detected"
+        else
+          echo "has-conflicts=false" >> $GITHUB_OUTPUT
+          echo "✅ No merge conflicts detected"
+        fi
+        
+    - name: Skip merge (already merged)
+      if: steps.pre-checks.outputs.is-already-merged == 'true'
+      run: |
+        echo "ℹ️ ${{ env.SOURCE_BRANCH }} is already merged into ${{ env.TARGET_BRANCH }}, skipping merge operation"
+        
+    - name: Handle merge conflicts
+      if: steps.pre-checks.outputs.has-conflicts == 'true'
+      run: |
+        echo "❌ Merge conflicts detected between ${{ env.SOURCE_BRANCH }} and ${{ env.TARGET_BRANCH }}"
+        echo "Please resolve conflicts manually and try again."
+        echo ""
+        echo "To resolve conflicts:"
+        echo "1. Checkout ${{ env.TARGET_BRANCH }}"
+        echo "2. Merge ${{ env.SOURCE_BRANCH }} manually"
+        echo "3. Resolve conflicts"
+        echo "4. Commit and push"
+        exit 1
+        
+    - name: Perform merge
+      if: steps.pre-checks.outputs.is-already-merged == 'false' && steps.pre-checks.outputs.has-conflicts == 'false'
+      run: |
+        echo "🔄 Merging ${{ env.SOURCE_BRANCH }} into ${{ env.TARGET_BRANCH }}..."
+        
+        # 切换到目标分支
+        git checkout ${{ env.TARGET_BRANCH }}
+        git pull origin ${{ env.TARGET_BRANCH }}
+        
+        # 根据策略执行合并
+        if [ "${{ env.MERGE_STRATEGY }}" = "squash" ]; then
+          echo "📦 Using squash merge strategy"
+          git merge --squash ${{ env.SOURCE_BRANCH }}
+          git commit -m "Merge ${{ env.SOURCE_BRANCH }} into ${{ env.TARGET_BRANCH }}
+
+          - Source: ${{ env.SOURCE_BRANCH }}
+          - Target: ${{ env.TARGET_BRANCH }}
+          - Strategy: squash
+          - Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          - Workflow: ${{ github.workflow }}
+          - Run ID: ${{ github.run_id }}"
+        elif [ "${{ env.MERGE_STRATEGY }}" = "ff" ]; then
+          echo "⚡ Using fast-forward merge strategy"
+          git merge --ff-only ${{ env.SOURCE_BRANCH }}
+        else
+          echo "🔄 Using no-fast-forward merge strategy"
+          git merge --no-ff ${{ env.SOURCE_BRANCH }} -m "Merge ${{ env.SOURCE_BRANCH }} into ${{ env.TARGET_BRANCH }}
+
+          - Source: ${{ env.SOURCE_BRANCH }}
+          - Target: ${{ env.TARGET_BRANCH }}
+          - Strategy: no-ff
+          - Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          - Workflow: ${{ github.workflow }}
+          - Run ID: ${{ github.run_id }}"
+        fi
+        
+        # 推送合并结果
+        git push origin ${{ env.TARGET_BRANCH }}
+        
+        echo "✅ Successfully merged ${{ env.SOURCE_BRANCH }} into ${{ env.TARGET_BRANCH }}"
+        
+    - name: Create merge notification
+      if: always()
+      run: |
+        echo "📢 Auto-merge operation completed:"
+        echo "  - Source: ${{ env.SOURCE_BRANCH }}"
+        echo "  - Target: ${{ env.TARGET_BRANCH }}"
+        echo "  - Strategy: ${{ env.MERGE_STRATEGY }}"
+        echo "  - Already merged: ${{ steps.pre-checks.outputs.is-already-merged }}"
+        echo "  - Has conflicts: ${{ steps.pre-checks.outputs.has-conflicts }}"
+        echo "  - Current commit: $(git rev-parse HEAD)"
+        echo "  - Workflow: ${{ github.workflow }}"
+        echo "  - Run ID: ${{ github.run_id }}"
+        
+        if [ "${{ steps.pre-checks.outputs.is-already-merged }}" = "true" ]; then
+          echo "✅ Merge operation completed successfully (already merged)"
+        elif [ "${{ steps.pre-checks.outputs.has-conflicts }}" = "true" ]; then
+          echo "❌ Merge operation failed due to conflicts"
+        else
+          echo "✅ Merge operation completed successfully"
+        fi
+
+  # 后置检查
+  post-merge-check:
+    name: Post-Merge Check
+    runs-on: ubuntu-latest
+    needs: [auto-merge]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Verify merge result
+      run: |
+        echo "🔍 Verifying merge result..."
+        
+        git fetch origin
+        git checkout ${{ env.TARGET_BRANCH }}
+        git pull origin ${{ env.TARGET_BRANCH }}
+        
+        # 检查合并是否成功
+        if git merge-base --is-ancestor ${{ env.SOURCE_BRANCH }} ${{ env.TARGET_BRANCH }}; then
+          echo "✅ Merge verification successful"
+          echo "  - ${{ env.SOURCE_BRANCH }} is now part of ${{ env.TARGET_BRANCH }}"
+        else
+          echo "❌ Merge verification failed"
+          echo "  - ${{ env.SOURCE_BRANCH }} is not part of ${{ env.TARGET_BRANCH }}"
+          exit 1
+        fi
+        
+        # 显示最近的提交
+        echo "📋 Recent commits in ${{ env.TARGET_BRANCH }}:"
+        git log --oneline -5
+        
+    - name: Final notification
+      if: always()
+      run: |
+        echo "🎉 Auto-merge process completed!"
+        echo "  - Source: ${{ env.SOURCE_BRANCH }}"
+        echo "  - Target: ${{ env.TARGET_BRANCH }}"
+        echo "  - Status: ${{ needs.auto-merge.result }}"
+        echo "  - Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"

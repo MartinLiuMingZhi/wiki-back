@@ -1,0 +1,237 @@
+name: Develop to Main Auto Merge
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      force_merge:
+        description: 'Force merge even if conflicts exist'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  # 检查合并条件
+  check-merge-conditions:
+    name: Check Merge Conditions
+    runs-on: ubuntu-latest
+    outputs:
+      can-merge: ${{ steps.check.outputs.can-merge }}
+      has-conflicts: ${{ steps.check.outputs.has-conflicts }}
+      is-behind: ${{ steps.check.outputs.is-behind }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Configure Git
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        git config --global pull.rebase false
+        
+    - name: Check merge conditions
+      id: check
+      run: |
+        echo "🔍 Checking merge conditions..."
+        
+        # 获取最新信息
+        git fetch origin
+        
+        # 检查develop分支状态
+        git checkout develop
+        git pull origin develop
+        
+        # 检查main分支状态
+        git checkout main
+        git pull origin main
+        
+        # 检查develop是否已经合并到main
+        if git merge-base --is-ancestor develop main; then
+          echo "can-merge=false" >> $GITHUB_OUTPUT
+          echo "is-behind=false" >> $GITHUB_OUTPUT
+          echo "has-conflicts=false" >> $GITHUB_OUTPUT
+          echo "ℹ️ develop is already merged into main"
+          exit 0
+        fi
+        
+        # 检查main是否落后于develop
+        BEHIND_COUNT=$(git rev-list --count main..develop)
+        if [ "$BEHIND_COUNT" -gt 0 ]; then
+          echo "is-behind=true" >> $GITHUB_OUTPUT
+          echo "📊 main is $BEHIND_COUNT commits behind develop"
+        else
+          echo "is-behind=false" >> $GITHUB_OUTPUT
+          echo "📊 main is up to date with develop"
+        fi
+        
+        # 检查合并冲突
+        git checkout develop
+        if git merge-tree $(git merge-base develop main) develop main | grep -q "<<<<<<<"; then
+          echo "has-conflicts=true" >> $GITHUB_OUTPUT
+          echo "⚠️ Merge conflicts detected"
+          HAS_CONFLICTS="true"
+        else
+          echo "has-conflicts=false" >> $GITHUB_OUTPUT
+          echo "✅ No merge conflicts detected"
+          HAS_CONFLICTS="false"
+        fi
+        
+        # 决定是否可以合并
+        FORCE_MERGE="${{ github.event.inputs.force_merge }}"
+        if [ "$HAS_CONFLICTS" = "true" ] && [ "$FORCE_MERGE" != "true" ]; then
+          echo "can-merge=false" >> $GITHUB_OUTPUT
+          echo "❌ Cannot merge due to conflicts"
+        else
+          echo "can-merge=true" >> $GITHUB_OUTPUT
+          echo "✅ Can proceed with merge"
+        fi
+
+  # 执行合并
+  perform-merge:
+    name: Perform Merge
+    runs-on: ubuntu-latest
+    needs: [check-merge-conditions]
+    if: needs.check-merge-conditions.outputs.can-merge == 'true'
+    timeout-minutes: 10
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Configure Git
+      run: |
+        git config --global user.name "GitHub Actions"
+        git config --global user.email "actions@github.com"
+        git config --global pull.rebase false
+        
+    - name: Perform merge
+      run: |
+        echo "🔄 Performing merge from develop to main..."
+        
+        # 获取最新信息
+        git fetch origin
+        
+        # 切换到main分支
+        git checkout main
+        git pull origin main
+        
+        # 执行合并
+        if [ "${{ needs.check-merge-conditions.outputs.has-conflicts }}" = "true" ]; then
+          echo "⚠️ Force merging despite conflicts"
+          git merge develop --no-ff -m "Force merge develop to main
+
+          - Source: develop
+          - Target: main
+          - Strategy: no-ff (force)
+          - Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          - Workflow: ${{ github.workflow }}
+          - Run ID: ${{ github.run_id }}
+          - Note: This merge was forced due to conflicts"
+        else
+          echo "✅ Normal merge without conflicts"
+          git merge develop --no-ff -m "Merge develop to main
+
+          - Source: develop
+          - Target: main
+          - Strategy: no-ff
+          - Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          - Workflow: ${{ github.workflow }}
+          - Run ID: ${{ github.run_id }}"
+        fi
+        
+        # 推送合并结果
+        git push origin main
+        
+        echo "✅ Successfully merged develop into main"
+        
+    - name: Verify merge
+      run: |
+        echo "🔍 Verifying merge result..."
+        
+        # 验证合并是否成功
+        if git merge-base --is-ancestor develop main; then
+          echo "✅ Merge verification successful"
+        else
+          echo "❌ Merge verification failed"
+          exit 1
+        fi
+        
+        # 显示合并信息
+        echo "📋 Merge information:"
+        echo "  - Source: develop"
+        echo "  - Target: main"
+        echo "  - Merge commit: $(git rev-parse HEAD)"
+        echo "  - Previous main: $(git rev-parse HEAD~1)"
+        
+        # 显示最近的提交
+        echo "📋 Recent commits:"
+        git log --oneline -5
+
+  # 跳过合并
+  skip-merge:
+    name: Skip Merge
+    runs-on: ubuntu-latest
+    needs: [check-merge-conditions]
+    if: needs.check-merge-conditions.outputs.can-merge == 'false'
+    
+    steps:
+    - name: Skip merge notification
+      run: |
+        echo "⏭️ Skipping merge operation"
+        echo "  - Can merge: ${{ needs.check-merge-conditions.outputs.can-merge }}"
+        echo "  - Has conflicts: ${{ needs.check-merge-conditions.outputs.has-conflicts }}"
+        echo "  - Is behind: ${{ needs.check-merge-conditions.outputs.is-behind }}"
+        
+        if [ "${{ needs.check-merge-conditions.outputs.has-conflicts }}" = "true" ]; then
+          echo "❌ Skipped due to merge conflicts"
+          echo "💡 To force merge, use workflow_dispatch with force_merge=true"
+        elif [ "${{ needs.check-merge-conditions.outputs.is-behind }}" = "false" ]; then
+          echo "ℹ️ Skipped because develop is already merged into main"
+        else
+          echo "❌ Skipped due to unknown conditions"
+        fi
+
+  # 最终通知
+  final-notification:
+    name: Final Notification
+    runs-on: ubuntu-latest
+    needs: [check-merge-conditions, perform-merge, skip-merge]
+    if: always()
+    
+    steps:
+    - name: Create final notification
+      run: |
+        echo "📢 Develop to Main merge process completed"
+        echo "  - Workflow: ${{ github.workflow }}"
+        echo "  - Run ID: ${{ github.run_id }}"
+        echo "  - Trigger: ${{ github.event_name }}"
+        echo "  - Source: develop"
+        echo "  - Target: main"
+        echo "  - Timestamp: $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+        echo ""
+        echo "📊 Results:"
+        echo "  - Check conditions: ${{ needs.check-merge-conditions.result }}"
+        echo "  - Perform merge: ${{ needs.perform-merge.result }}"
+        echo "  - Skip merge: ${{ needs.skip-merge.result }}"
+        echo ""
+        
+        if [ "${{ needs.perform-merge.result }}" = "success" ]; then
+          echo "✅ Merge completed successfully"
+        elif [ "${{ needs.skip-merge.result }}" = "success" ]; then
+          echo "⏭️ Merge was skipped"
+        else
+          echo "❌ Merge process failed"
+        fi

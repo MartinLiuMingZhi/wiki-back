@@ -1,8 +1,18 @@
-# Wiki 知识管理系统
+# 🚀 Wiki 知识管理系统
 
 一个基于Spring Boot 3.5.6的现代化知识管理系统，采用微服务架构设计，支持文档管理、用户认证、邮箱验证、文件存储等功能。
 
-> 📖 **English Documentation**: [README_EN.md](./README_EN.md) - Complete English documentation for international users
+> 📖 **English Documentation**: [README_EN.md](./README_EN.md) - Complete English documentation for international users  
+> 📚 **Documentation Index**: [docs/DOCUMENTATION-INDEX.md](./docs/DOCUMENTATION-INDEX.md) - Complete documentation guide
+
+## 🎯 项目亮点
+
+- ⚡ **高性能** - 基于Spring Boot 3.5.6，支持高并发访问
+- 🔒 **安全可靠** - JWT + Spring Security，多层安全防护
+- 🚀 **CI/CD完善** - 7个工作流，企业级自动化部署
+- 📊 **智能监控** - 实时状态监控，详细报告分析
+- 🎯 **智能发布** - 自动版本管理，零停机部署
+- 🌍 **国际化支持** - 中英文文档，全球用户友好
 
 ## ✨ 核心功能
 
@@ -18,6 +28,7 @@
 
 ## 🚀 技术栈
 
+### 后端技术
 - **后端框架**: Spring Boot 3.5.6
 - **数据库**: MySQL 8.0 + Redis 6.0
 - **ORM框架**: MyBatis Plus
@@ -27,6 +38,14 @@
 - **API文档**: Swagger/OpenAPI 3.0
 - **配置加密**: Jasypt
 - **构建工具**: Maven 3.6+
+
+### CI/CD 技术
+- **自动化平台**: GitHub Actions
+- **容器化**: Docker + Docker Compose
+- **代码质量**: SpotBugs + Checkstyle + PMD
+- **安全扫描**: OWASP Dependency Check
+- **测试框架**: JUnit 5 + Spring Boot Test
+- **部署策略**: 蓝绿部署 + 滚动更新
 
 ## 📁 项目结构
 
@@ -139,6 +158,36 @@ wiki/
    - 🌐 **应用地址**: http://localhost:8080
    - 📚 **API文档**: http://localhost:8080/swagger-ui.html
    - 🔧 **健康检查**: http://localhost:8080/actuator/health
+
+## 🔄 CI/CD 工作流
+
+### 工作流概览
+
+本项目包含 **7个GitHub Actions工作流**，提供完整的CI/CD自动化：
+
+| 工作流 | 功能 | 触发条件 | 主要任务 |
+|--------|------|----------|----------|
+| `ci.yml` | 主要CI/CD流水线 | develop分支推送 | 代码质量、测试、构建、部署 |
+| `main-branch.yml` | 主分支管理 | main分支推送 | 代码质量、测试、验证 |
+| `release.yml` | 版本发布 | develop推送/手动触发 | 版本发布、生产部署、合并main |
+| `develop-to-main.yml` | 自动合并 | develop推送 | 智能合并、冲突检测 |
+| `auto-merge.yml` | 通用自动合并 | 工作流完成后 | 多分支合并、策略选择 |
+| `dependabot.yml` | 依赖更新 | Dependabot PR | 依赖安全检查、自动合并 |
+| `publish.yml` | 包发布 | 手动触发 | 灵活包发布、多环境部署 |
+
+### 工作流特性
+
+- ✅ **并行执行** - 最大化构建效率
+- ✅ **容错构建** - 允许部分检查失败
+- ✅ **智能合并** - 自动处理合并冲突
+- ✅ **多环境支持** - staging和production
+- ✅ **安全扫描** - OWASP依赖检查
+- ✅ **代码质量** - SpotBugs + Checkstyle + PMD
+
+### 详细文档
+
+- 📚 **[API文档](./docs/API.md)** - 完整的API接口文档
+- 🏗️ **[架构文档](./docs/ARCHITECTURE.md)** - 系统架构设计文档
 
 ## 🔐 安全配置
 

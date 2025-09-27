@@ -99,9 +99,12 @@ public class FileServiceImpl implements FileService {
 
             return result;
 
-        } catch (Exception e) {
+        } catch (IOException e) {
             log.error("文件上传失败：{}", e.getMessage());
             throw new RuntimeException("文件上传失败", e);
+        } catch (RuntimeException e) {
+            log.error("文件上传失败：{}", e.getMessage());
+            throw e;
         }
     }
 
@@ -216,7 +219,7 @@ public class FileServiceImpl implements FileService {
     @Override
     public String confirmUpload(String key, Long userId, Long fileSize) {
         // 验证文件是否存在且大小正确
-        if (fileExists(key) && getFileSize(key) == fileSize) {
+        if (fileExists(key) && getFileSize(key).equals(fileSize)) {
             log.info("文件上传确认成功：用户ID={}, 文件路径={}", userId, key);
             return key;
         } else {
@@ -281,8 +284,14 @@ public class FileServiceImpl implements FileService {
      * 上传文件到本地
      */
     private void uploadToLocal(MultipartFile file, String fileKey) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("文件不能为空");
+        }
         Path filePath = Paths.get(uploadPath, fileKey);
-        Files.createDirectories(filePath.getParent());
+        Path parentDir = filePath.getParent();
+        if (parentDir != null) {
+            Files.createDirectories(parentDir);
+        }
         file.transferTo(filePath.toFile());
     }
 

@@ -32,4 +32,18 @@ public class UpdateDocumentRequest {
      * 标签ID数组
      */
     private Long[] tagIds;
+    
+    /**
+     * 获取标签ID数组的不可变副本
+     */
+    public Long[] getTagIds() {
+        return tagIds != null ? tagIds.clone() : new Long[0];
+    }
+    
+    /**
+     * 设置标签ID数组
+     */
+    public void setTagIds(Long[] tagIds) {
+        this.tagIds = tagIds != null ? tagIds.clone() : new Long[0];
+    }
 }

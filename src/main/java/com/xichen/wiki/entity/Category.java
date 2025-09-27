@@ -5,6 +5,8 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -68,7 +70,21 @@ public class Category {
      * 子分类列表（非数据库字段）
      */
     @TableField(exist = false)
-    private List<Category> children;
+    private List<Category> children = new ArrayList<>();
+    
+    /**
+     * 获取子分类列表的不可变副本
+     */
+    public List<Category> getChildren() {
+        return Collections.unmodifiableList(children);
+    }
+    
+    /**
+     * 设置子分类列表
+     */
+    public void setChildren(List<Category> children) {
+        this.children = children != null ? new ArrayList<>(children) : new ArrayList<>();
+    }
 }
 
 

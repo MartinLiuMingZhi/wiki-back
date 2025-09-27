@@ -547,6 +547,276 @@ spec:
 - 🏗️ [架构文档](./docs/ARCHITECTURE.md) - 系统架构和技术栈说明
 - 🌍 [英文文档](./README_EN.md) - 完整的英文项目说明
 
+## 🔄 详细工作流示例图
+
+### 1. develop分支CI/CD详细流程
+```mermaid
+graph LR
+    A[📝 推送到develop] --> B[🚀 触发ci.yml]
+    B --> C[⚡ 并行执行]
+    
+    C --> D[🔍 代码质量检查]
+    C --> E[🧪 单元测试]
+    C --> F[🔒 安全扫描]
+    C --> G[📊 集成测试]
+    
+    D --> H[📋 SpotBugs检查]
+    D --> I[📋 Checkstyle检查]
+    D --> J[📋 PMD检查]
+    
+    E --> K[🧪 单元测试执行]
+    E --> L[📊 测试覆盖率]
+    
+    F --> M[🔒 OWASP依赖检查]
+    F --> N[🔒 容器安全扫描]
+    
+    G --> O[📊 端到端测试]
+    G --> P[📊 性能测试]
+    
+    H --> Q[🐳 构建Docker镜像]
+    I --> Q
+    J --> Q
+    K --> Q
+    L --> Q
+    M --> Q
+    N --> Q
+    O --> Q
+    P --> Q
+    
+    Q --> R[🚀 部署到staging]
+    R --> S[🏷️ 创建版本标签]
+    S --> T[📦 创建GitHub Release]
+    T --> U[🌐 部署到production]
+    U --> V[🔄 自动合并到main]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style Q fill:#fff3e0
+    style U fill:#ffebee
+    style V fill:#e8f5e8
+```
+
+### 2. main分支管理详细流程
+```mermaid
+graph LR
+    A[📝 推送到main] --> B[🚀 触发main-branch.yml]
+    B --> C[⚡ 并行执行]
+    
+    C --> D[🔍 代码质量检查]
+    C --> E[🧪 单元测试]
+    C --> F[🔒 安全扫描]
+    
+    D --> G[📋 SpotBugs检查]
+    D --> H[📋 Checkstyle检查]
+    D --> I[📋 PMD检查]
+    
+    E --> J[🧪 单元测试执行]
+    E --> K[📊 测试覆盖率]
+    
+    F --> L[🔒 OWASP依赖检查]
+    F --> M[🔒 容器安全扫描]
+    
+    G --> N[🐳 构建Docker镜像]
+    H --> N
+    I --> N
+    J --> N
+    K --> N
+    L --> N
+    M --> N
+    
+    N --> O[✅ 验证完成]
+    O --> P[📝 记录验证结果]
+    
+    style A fill:#e1f5fe
+    style B fill:#e8f5e8
+    style N fill:#fff3e0
+    style O fill:#e8f5e8
+```
+
+### 3. 版本发布详细流程
+```mermaid
+graph TD
+    A[📝 推送到develop] --> B[🚀 触发release.yml]
+    B --> C[🏷️ 版本检测]
+    
+    C --> D{版本类型}
+    D -->|develop| E[📈 自动递增PATCH版本]
+    D -->|v*/develop| F[📈 基于大版本递增]
+    D -->|手动触发| G[📝 自定义版本]
+    
+    E --> H[📌 创建Git标签]
+    F --> H
+    G --> H
+    
+    H --> I[📦 创建GitHub Release]
+    I --> J[🐳 构建JAR包]
+    I --> K[🐳 构建Docker镜像]
+    
+    J --> L[📤 上传JAR包到Release]
+    K --> M[📤 推送Docker镜像]
+    
+    L --> N[🌐 部署到生产环境]
+    M --> N
+    
+    N --> O[🔄 自动合并到main]
+    O --> P[📢 发送通知]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style H fill:#fff3e0
+    style N fill:#ffebee
+    style O fill:#e8f5e8
+```
+
+### 4. 依赖更新详细流程
+```mermaid
+graph LR
+    A[🤖 Dependabot检测] --> B[📦 创建依赖更新PR]
+    B --> C[🚀 触发dependabot.yml]
+    
+    C --> D[🔍 安全检查]
+    D --> E[📋 依赖类型分析]
+    E --> F{安全等级}
+    
+    F -->|高安全| G[✅ 自动合并]
+    F -->|中安全| H[👀 人工审核]
+    F -->|低安全| I[❌ 拒绝合并]
+    
+    G --> J[📢 发送合并通知]
+    H --> K[👤 等待人工确认]
+    K --> L{人工决策}
+    L -->|通过| G
+    L -->|拒绝| I
+    
+    I --> M[📢 发送拒绝通知]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style G fill:#e8f5e8
+    style I fill:#ffebee
+```
+
+### 5. 自动合并详细流程
+```mermaid
+graph TD
+    A[📝 develop推送] --> B[🚀 触发develop-to-main.yml]
+    B --> C[🔍 检查合并条件]
+    
+    C --> D{是否可以合并}
+    D -->|是| E[🔄 执行合并]
+    D -->|否| F[❌ 跳过合并]
+    
+    E --> G[📝 创建合并提交]
+    G --> H[📤 推送到main分支]
+    H --> I[📢 发送合并通知]
+    
+    F --> J[📢 发送跳过通知]
+    J --> K[📝 记录跳过原因]
+    
+    style A fill:#e1f5fe
+    style B fill:#f3e5f5
+    style E fill:#e8f5e8
+    style F fill:#ffebee
+```
+
+### 6. 部署策略详细流程
+```mermaid
+graph TD
+    A[🚀 部署触发] --> B{部署环境}
+    B -->|staging| C[🧪 测试环境部署]
+    B -->|production| D[🌐 生产环境部署]
+    
+    C --> E[🐳 拉取Docker镜像]
+    E --> F[🔄 蓝绿部署]
+    F --> G[🔍 健康检查]
+    G --> H{健康检查结果}
+    H -->|通过| I[✅ 部署成功]
+    H -->|失败| J[🔄 自动回滚]
+    
+    D --> K[🐳 拉取Docker镜像]
+    K --> L[🔄 滚动更新]
+    L --> M[🔍 健康检查]
+    M --> N{健康检查结果}
+    N -->|通过| O[✅ 部署成功]
+    N -->|失败| P[🔄 自动回滚]
+    
+    I --> Q[📢 发送成功通知]
+    J --> R[📢 发送回滚通知]
+    O --> Q
+    P --> R
+    
+    style A fill:#e1f5fe
+    style C fill:#fff3e0
+    style D fill:#ffebee
+    style I fill:#e8f5e8
+    style J fill:#ffebee
+```
+
+### 7. 监控和告警详细流程
+```mermaid
+graph TD
+    A[📊 系统监控] --> B{监控类型}
+    B -->|构建监控| C[🔍 构建状态检查]
+    B -->|部署监控| D[🔍 部署状态检查]
+    B -->|运行监控| E[🔍 服务健康检查]
+    
+    C --> F{构建结果}
+    F -->|成功| G[✅ 记录成功]
+    F -->|失败| H[🚨 触发告警]
+    
+    D --> I{部署结果}
+    I -->|成功| J[✅ 记录成功]
+    I -->|失败| K[🚨 触发告警]
+    
+    E --> L{健康状态}
+    L -->|正常| M[✅ 记录正常]
+    L -->|异常| N[🚨 触发告警]
+    
+    H --> O[📧 发送邮件通知]
+    K --> O
+    N --> O
+    
+    O --> P[📱 发送Slack通知]
+    P --> Q[📝 记录告警日志]
+    
+    style A fill:#e1f5fe
+    style H fill:#ffebee
+    style K fill:#ffebee
+    style N fill:#ffebee
+    style O fill:#fff3e0
+```
+
+### 8. 完整CI/CD时间线图
+```mermaid
+gantt
+    title CI/CD 完整时间线
+    dateFormat  X
+    axisFormat %M:%S
+    
+    section 代码提交
+    推送代码到develop    :0, 30
+    
+    section 并行检查
+    代码质量检查        :30, 120
+    单元测试          :30, 90
+    安全扫描          :30, 150
+    集成测试          :30, 180
+    
+    section 构建阶段
+    构建JAR包         :180, 240
+    构建Docker镜像     :180, 300
+    
+    section 部署阶段
+    部署到测试环境      :300, 360
+    健康检查          :360, 390
+    部署到生产环境      :390, 450
+    
+    section 后续处理
+    创建版本标签        :450, 480
+    自动合并到main     :480, 510
+    发送通知          :510, 540
+```
+
 ## 📞 联系信息
 
 如有问题，请联系：

@@ -61,54 +61,48 @@ public class EmailTemplateServiceImpl implements IEmailTemplateService {
      * 生成简单的HTML邮件内容（备用方案）
      */
     private String generateSimpleHtml(String code, String type, String email, int expireMinutes) {
-        return String.format("""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>验证码邮件</title>
-                <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: #667eea; color: white; padding: 20px; text-align: center; }
-                    .content { padding: 20px; background: #f9f9f9; }
-                    .code { font-size: 24px; font-weight: bold; color: #667eea; text-align: center; margin: 20px 0; }
-                    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>🔐 验证码邮件</h1>
-                        <p>Wiki知识管理系统</p>
-                    </div>
-                    <div class="content">
-                        <h2>您的验证码</h2>
-                        <p>您正在进行%s操作，请使用以下验证码完成验证：</p>
-                        <div class="code">%s</div>
-                        <p><strong>验证码信息：</strong></p>
-                        <ul>
-                            <li>验证码有效期：%d分钟</li>
-                            <li>验证码类型：%s</li>
-                            <li>接收邮箱：%s</li>
-                            <li>发送时间：%s</li>
-                        </ul>
-                        <p style="color: #e74c3c; font-weight: bold;">⚠️ 请勿将验证码告知他人，如非本人操作，请忽略此邮件。</p>
-                    </div>
-                    <div class="footer">
-                        <p>Wiki知识管理系统 - 让知识管理更简单、更高效</p>
-                    </div>
-                </div>
-            </body>
-            </html>
-            """, 
-            getTypeDisplayName(type), 
-            code, 
-            expireMinutes, 
-            getTypeDisplayName(type), 
-            email, 
-            LocalDateTime.now().format(TIME_FORMATTER)
-        );
+        StringBuilder html = new StringBuilder();
+        html.append("<!DOCTYPE html>\n");
+        html.append("<html>\n");
+        html.append("<head>\n");
+        html.append("    <meta charset=\"UTF-8\">\n");
+        html.append("    <title>验证码邮件</title>\n");
+        html.append("    <style>\n");
+        html.append("        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n");
+        html.append("        .container { max-width: 600px; margin: 0 auto; padding: 20px; }\n");
+        html.append("        .header { background: #667eea; color: white; padding: 20px; text-align: center; }\n");
+        html.append("        .content { padding: 20px; background: #f9f9f9; }\n");
+        html.append("        .code { font-size: 24px; font-weight: bold; color: #667eea; text-align: center; margin: 20px 0; }\n");
+        html.append("        .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }\n");
+        html.append("    </style>\n");
+        html.append("</head>\n");
+        html.append("<body>\n");
+        html.append("    <div class=\"container\">\n");
+        html.append("        <div class=\"header\">\n");
+        html.append("            <h1>🔐 验证码邮件</h1>\n");
+        html.append("            <p>Wiki知识管理系统</p>\n");
+        html.append("        </div>\n");
+        html.append("        <div class=\"content\">\n");
+        html.append("            <h2>您的验证码</h2>\n");
+        html.append("            <p>您正在进行").append(getTypeDisplayName(type)).append("操作，请使用以下验证码完成验证：</p>\n");
+        html.append("            <div class=\"code\">").append(code).append("</div>\n");
+        html.append("            <p><strong>验证码信息：</strong></p>\n");
+        html.append("            <ul>\n");
+        html.append("                <li>验证码有效期：").append(expireMinutes).append("分钟</li>\n");
+        html.append("                <li>验证码类型：").append(getTypeDisplayName(type)).append("</li>\n");
+        html.append("                <li>接收邮箱：").append(email).append("</li>\n");
+        html.append("                <li>发送时间：").append(LocalDateTime.now().format(TIME_FORMATTER)).append("</li>\n");
+        html.append("            </ul>\n");
+        html.append("            <p style=\"color: #e74c3c; font-weight: bold;\">⚠️ 请勿将验证码告知他人，如非本人操作，请忽略此邮件。</p>\n");
+        html.append("        </div>\n");
+        html.append("        <div class=\"footer\">\n");
+        html.append("            <p>Wiki知识管理系统 - 让知识管理更简单、更高效</p>\n");
+        html.append("        </div>\n");
+        html.append("    </div>\n");
+        html.append("</body>\n");
+        html.append("</html>\n");
+        
+        return html.toString();
     }
     
     /**

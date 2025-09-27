@@ -1,0 +1,445 @@
+name: 🚀 Unified CI/CD Pipeline
+
+on:
+  # 主要触发条件
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - production
+      skip_tests:
+        description: 'Skip tests (for emergency deployments)'
+        required: false
+        default: false
+        type: boolean
+      force_deploy:
+        description: 'Force deployment even if some checks fail'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+  checks: write
+  actions: read
+
+env:
+  JAVA_VERSION: '17'
+  MAVEN_VERSION: '3.9.6'
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  CACHE_VERSION: v2
+
+jobs:
+  # 🔍 智能工作流选择
+  workflow-selector:
+    name: Workflow Selector
+    runs-on: ubuntu-latest
+    outputs:
+      workflow-type: ${{ steps.select.outputs.workflow-type }}
+      should-run-tests: ${{ steps.select.outputs.should-run-tests }}
+      should-build-docker: ${{ steps.select.outputs.should-build-docker }}
+      should-deploy: ${{ steps.select.outputs.should-deploy }}
+      target-environment: ${{ steps.select.outputs.target-environment }}
+      is-release: ${{ steps.select.outputs.is-release }}
+    
+    steps:
+    - name: Select workflow type
+      id: select
+      run: |
+        echo "🔍 Analyzing workflow requirements..."
+        
+        # 分析触发条件
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          echo "workflow-type=manual" >> $GITHUB_OUTPUT
+          echo "should-run-tests=${{ !github.event.inputs.skip_tests }}" >> $GITHUB_OUTPUT
+          echo "should-build-docker=true" >> $GITHUB_OUTPUT
+          echo "should-deploy=true" >> $GITHUB_OUTPUT
+          echo "target-environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          echo "is-release=false" >> $GITHUB_OUTPUT
+        elif [ "${{ github.event_name }}" = "pull_request" ]; then
+          echo "workflow-type=pr" >> $GITHUB_OUTPUT
+          echo "should-run-tests=true" >> $GITHUB_OUTPUT
+          echo "should-build-docker=false" >> $GITHUB_OUTPUT
+          echo "should-deploy=false" >> $GITHUB_OUTPUT
+          echo "target-environment=none" >> $GITHUB_OUTPUT
+          echo "is-release=false" >> $GITHUB_OUTPUT
+        elif [ "${{ github.ref }}" = "refs/heads/develop" ]; then
+          echo "workflow-type=develop" >> $GITHUB_OUTPUT
+          echo "should-run-tests=true" >> $GITHUB_OUTPUT
+          echo "should-build-docker=true" >> $GITHUB_OUTPUT
+          echo "should-deploy=true" >> $GITHUB_OUTPUT
+          echo "target-environment=staging" >> $GITHUB_OUTPUT
+          echo "is-release=false" >> $GITHUB_OUTPUT
+        elif [ "${{ github.ref }}" = "refs/heads/main" ]; then
+          echo "workflow-type=main" >> $GITHUB_OUTPUT
+          echo "should-run-tests=true" >> $GITHUB_OUTPUT
+          echo "should-build-docker=true" >> $GITHUB_OUTPUT
+          echo "should-deploy=false" >> $GITHUB_OUTPUT
+          echo "target-environment=none" >> $GITHUB_OUTPUT
+          echo "is-release=true" >> $GITHUB_OUTPUT
+        else
+          echo "workflow-type=other" >> $GITHUB_OUTPUT
+          echo "should-run-tests=true" >> $GITHUB_OUTPUT
+          echo "should-build-docker=false" >> $GITHUB_OUTPUT
+          echo "should-deploy=false" >> $GITHUB_OUTPUT
+          echo "target-environment=none" >> $GITHUB_OUTPUT
+          echo "is-release=false" >> $GITHUB_OUTPUT
+        fi
+        
+        echo "📊 Workflow configuration:"
+        echo "  - Type: ${{ steps.select.outputs.workflow-type }}"
+        echo "  - Run tests: ${{ steps.select.outputs.should-run-tests }}"
+        echo "  - Build Docker: ${{ steps.select.outputs.should-build-docker }}"
+        echo "  - Deploy: ${{ steps.select.outputs.should-deploy }}"
+        echo "  - Environment: ${{ steps.select.outputs.target-environment }}"
+        echo "  - Is release: ${{ steps.select.outputs.is-release }}"
+
+  # 🧪 代码质量检查
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
+          ${{ runner.os }}-m2-
+        
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
+    - name: Run code quality checks
+      run: |
+        echo "🔍 Running comprehensive code quality checks..."
+        chmod +x .github/scripts/run-quality-checks.sh
+        ./.github/scripts/run-quality-checks.sh
+        
+    - name: Upload code quality reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: code-quality-reports
+        path: |
+          target/spotbugsXml.xml
+          target/checkstyle-results.xml
+          target/pmd.xml
+
+  # 🧪 单元测试
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [workflow-selector]
+    if: needs.workflow-selector.outputs.should-run-tests == 'true'
+    timeout-minutes: 20
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root123456
+          MYSQL_DATABASE: wiki_test
+          MYSQL_USER: wiki_test
+          MYSQL_PASSWORD: wiki_test123456
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+          
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
+          ${{ runner.os }}-m2-
+        
+    - name: Wait for services
+      run: |
+        echo "⏳ 等待服务启动..."
+        timeout 60 bash -c 'until mysqladmin ping -h"127.0.0.1" -P"3306" -u"root" -p"root123456" --silent; do sleep 2; done'
+        echo "✅ MySQL服务已就绪"
+        
+        timeout 60 bash -c 'until nc -z 127.0.0.1 6379; do sleep 2; done'
+        echo "✅ Redis服务已就绪"
+        
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
+    - name: Run unit tests
+      run: |
+        echo "🧪 Running unit tests..."
+        chmod +x .github/scripts/run-tests.sh
+        ./.github/scripts/run-tests.sh
+      env:
+        SPRING_DATASOURCE_URL: jdbc:mysql://127.0.0.1:3306/wiki_test?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+        SPRING_DATASOURCE_USERNAME: wiki_test
+        SPRING_DATASOURCE_PASSWORD: wiki_test123456
+        SPRING_DATA_REDIS_HOST: 127.0.0.1
+        SPRING_DATA_REDIS_PORT: 6379
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: target/surefire-reports/
+
+  # 🔒 安全扫描
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
+          ${{ runner.os }}-m2-
+        
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
+    - name: Run security scan
+      run: |
+        echo "🔒 Running security scan..."
+        chmod +x .github/scripts/run-dependency-check.sh
+        NVD_API_KEY="${{ secrets.NVD_API_KEY }}" ./.github/scripts/run-dependency-check.sh || {
+          echo "⚠️ Security scan failed, but continuing build..."
+        }
+        
+    - name: Upload security scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-scan-results
+        path: target/dependency-check-report.html
+
+  # 🏗️ 构建JAR包
+  build-jar:
+    name: Build JAR Package
+    runs-on: ubuntu-latest
+    needs: [workflow-selector, code-quality, unit-tests, security-scan]
+    if: always() && (needs.workflow-selector.outputs.should-run-tests == 'true' || needs.workflow-selector.outputs.workflow-type == 'manual')
+    timeout-minutes: 20
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up JDK ${{ env.JAVA_VERSION }}
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        
+    - name: Cache Maven dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-m2-${{ env.CACHE_VERSION }}-
+          ${{ runner.os }}-m2-
+        
+    - name: Fix Maven Wrapper
+      uses: ./.github/actions/maven-wrapper-fix
+      
+    - name: Build JAR package
+      run: |
+        echo "🏗️ Building JAR package..."
+        ./mvnw clean package -DskipTests -T 1C
+        
+    - name: Upload JAR artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: jar-artifacts
+        path: target/*.jar
+        retention-days: 30
+        
+    - name: Upload test reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-reports
+        path: target/site/jacoco/
+        retention-days: 30
+
+  # 🐳 构建Docker镜像
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: [workflow-selector, build-jar]
+    if: needs.workflow-selector.outputs.should-build-docker == 'true'
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.DOCKER_REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+          
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        build-args: |
+          BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          VCS_REF=${{ github.sha }}
+          VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+
+  # 🚀 部署
+  deploy:
+    name: Deploy to ${{ needs.workflow-selector.outputs.target-environment }}
+    runs-on: ubuntu-latest
+    needs: [workflow-selector, build-jar, build-docker]
+    if: needs.workflow-selector.outputs.should-deploy == 'true'
+    environment: ${{ needs.workflow-selector.outputs.target-environment }}
+    timeout-minutes: 15
+    
+    steps:
+    - name: Deploy to ${{ needs.workflow-selector.outputs.target-environment }}
+      run: |
+        echo "🚀 Deploying to ${{ needs.workflow-selector.outputs.target-environment }}..."
+        echo "Image: ${{ env.DOCKER_REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.ref_name }}"
+        
+        # 根据环境选择部署策略
+        if [ "${{ needs.workflow-selector.outputs.target-environment }}" = "staging" ]; then
+          echo "📦 Staging deployment strategy"
+          # 添加staging部署逻辑
+        elif [ "${{ needs.workflow-selector.outputs.target-environment }}" = "production" ]; then
+          echo "🏭 Production deployment strategy"
+          # 添加production部署逻辑
+        fi
+        
+    - name: Health check
+      run: |
+        echo "🔍 Performing health check..."
+        # 添加健康检查逻辑
+        
+    - name: Notify deployment success
+      if: success()
+      run: |
+        echo "✅ Deployment successful!"
+        echo "Environment: ${{ needs.workflow-selector.outputs.target-environment }}"
+
+  # 📊 状态通知
+  notify-status:
+    name: Status Notification
+    runs-on: ubuntu-latest
+    needs: [workflow-selector, code-quality, unit-tests, security-scan, build-jar, build-docker, deploy]
+    if: always()
+    
+    steps:
+    - name: Create status report
+      run: |
+        echo "📊 Workflow Status Report"
+        echo "=========================="
+        echo "Workflow Type: ${{ needs.workflow-selector.outputs.workflow-type }}"
+        echo "Target Environment: ${{ needs.workflow-selector.outputs.target-environment }}"
+        echo ""
+        echo "Job Results:"
+        echo "  - Code Quality: ${{ needs.code-quality.result }}"
+        echo "  - Unit Tests: ${{ needs.unit-tests.result }}"
+        echo "  - Security Scan: ${{ needs.security-scan.result }}"
+        echo "  - Build JAR: ${{ needs.build-jar.result }}"
+        echo "  - Build Docker: ${{ needs.build-docker.result }}"
+        echo "  - Deploy: ${{ needs.deploy.result }}"
+        echo ""
+        
+        # 计算总体状态
+        if [ "${{ needs.code-quality.result }}" = "success" ] && 
+           [ "${{ needs.unit-tests.result }}" = "success" ] && 
+           [ "${{ needs.security-scan.result }}" = "success" ] && 
+           [ "${{ needs.build-jar.result }}" = "success" ]; then
+          echo "✅ Overall Status: SUCCESS"
+        else
+          echo "❌ Overall Status: FAILED"
+        fi

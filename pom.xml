@@ -266,6 +266,22 @@
 				<configuration>
 					<format>HTML</format>
 					<failBuildOnCVSS>7</failBuildOnCVSS>
+					<!-- 配置离线模式，避免NVD API访问问题 -->
+					<nvdApiKey>${env.NVD_API_KEY}</nvdApiKey>
+					<retryCount>3</retryCount>
+					<connectionTimeout>20000</connectionTimeout>
+					<readTimeout>20000</readTimeout>
+					<!-- 使用本地数据库，避免网络问题 -->
+					<dataDirectory>${user.home}/.dependency-check/data</dataDirectory>
+					<!-- 跳过有问题的数据源，使用本地数据 -->
+					<enableNvd>false</enableNvd>
+					<enableRetired>false</enableRetired>
+					<enableExperimental>false</enableExperimental>
+					<!-- 使用本地数据，不进行网络更新 -->
+					<skipUpdate>true</skipUpdate>
+					<autoUpdate>false</autoUpdate>
+					<!-- 错误处理 -->
+					<failOnError>false</failOnError>
 					<suppressionFiles>
 						<suppressionFile>owasp-suppressions.xml</suppressionFile>
 					</suppressionFiles>

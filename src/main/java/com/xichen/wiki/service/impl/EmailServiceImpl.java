@@ -91,19 +91,7 @@ public class EmailServiceImpl implements IEmailService {
      */
     private String buildVerificationEmailContent(String verificationCode, String type) {
         return String.format("""
-            亲爱的用户，
-            
-            您正在进行%s操作，验证码为：%s
-            
-            验证码有效期为5分钟，请及时使用。
-            
-            如果这不是您的操作，请忽略此邮件。
-            
-            此邮件由系统自动发送，请勿回复。
-            
-            ---
-            Wiki知识管理系统
-            """, type, verificationCode);
+            亲爱的用户，%n%n您正在进行%s操作，验证码为：%s%n%n验证码有效期为5分钟，请及时使用。%n%n如果这不是您的操作，请忽略此邮件。%n%n此邮件由系统自动发送，请勿回复。%n%n---%nWiki知识管理系统%n""", type, verificationCode);
     }
     
     /**
@@ -132,22 +120,7 @@ public class EmailServiceImpl implements IEmailService {
      */
     private String buildPasswordResetEmailContent(String resetToken) {
         return String.format("""
-            亲爱的用户，
-            
-            您申请了密码重置，重置令牌为：%s
-            
-            请点击以下链接完成密码重置：
-            http://localhost:8080/api/auth/reset-password?token=%s
-            
-            重置令牌有效期为30分钟，请及时使用。
-            
-            如果这不是您的操作，请忽略此邮件。
-            
-            此邮件由系统自动发送，请勿回复。
-            
-            ---
-            Wiki知识管理系统
-            """, resetToken, resetToken);
+            亲爱的用户，%n%n您申请了密码重置，重置令牌为：%s%n%n请点击以下链接完成密码重置：%nhttp://localhost:8080/api/auth/reset-password?token=%s%n%n重置令牌有效期为30分钟，请及时使用。%n%n如果这不是您的操作，请忽略此邮件。%n%n此邮件由系统自动发送，请勿回复。%n%n---%nWiki知识管理系统%n""", resetToken, resetToken);
     }
     
     /**

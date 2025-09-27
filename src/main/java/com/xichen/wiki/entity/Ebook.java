@@ -128,11 +128,6 @@ public class Ebook {
     @TableField("last_read_page")
     private Integer lastReadPage;
     
-    /**
-     * 总页数
-     */
-    @TableField("total_pages")
-    private Integer totalPages;
 
     /**
      * 创建时间

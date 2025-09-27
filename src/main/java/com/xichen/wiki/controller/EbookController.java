@@ -7,8 +7,10 @@ import com.xichen.wiki.dto.UpdateEbookRequest;
 import com.xichen.wiki.entity.Ebook;
 import com.xichen.wiki.service.EbookService;
 import com.xichen.wiki.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 
@@ -39,16 +41,18 @@ public class EbookController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Operation(summary = "上传电子书", description = "上传PDF电子书文件")
+    @Operation(summary = "上传电子书", description = "上传PDF电子书文件", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/upload")
     public Result<Ebook> uploadEbook(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书文件") @RequestParam("file") @NotNull MultipartFile file,
             @Parameter(description = "电子书标题") @RequestParam @NotBlank String title,
             @Parameter(description = "作者") @RequestParam(required = false) String author,
             @Parameter(description = "描述") @RequestParam(required = false) String description,
-            @Parameter(description = "分类ID") @RequestParam(required = false) Long categoryId) {
+            @Parameter(description = "分类ID") @RequestParam(required = false) Long categoryId,
+            HttpServletRequest request) {
         
+        String token = request.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -63,15 +67,17 @@ public class EbookController {
         }
     }
 
-    @Operation(summary = "获取电子书列表", description = "分页获取用户的电子书列表")
+    @Operation(summary = "获取电子书列表", description = "分页获取用户的电子书列表", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
     public Result<Page<Ebook>> getEbooks(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
             @Parameter(description = "分类ID") @RequestParam(required = false) Long categoryId,
-            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
+            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
+            HttpServletRequest request) {
         
+        String token = request.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -81,12 +87,14 @@ public class EbookController {
         return Result.success(ebooks);
     }
 
-    @Operation(summary = "获取电子书详情", description = "获取指定电子书的详细信息")
+    @Operation(summary = "获取电子书详情", description = "获取指定电子书的详细信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{id}")
     public Result<Ebook> getEbookDetail(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -100,13 +108,15 @@ public class EbookController {
         return Result.success(ebook);
     }
 
-    @Operation(summary = "更新电子书信息", description = "更新电子书的基本信息")
+    @Operation(summary = "更新电子书信息", description = "更新电子书的基本信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/{id}")
     public Result<Ebook> updateEbook(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long id,
-            @Valid @RequestBody UpdateEbookRequest request) {
+            @Valid @RequestBody UpdateEbookRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -122,12 +132,14 @@ public class EbookController {
         }
     }
 
-    @Operation(summary = "删除电子书", description = "删除指定的电子书")
+    @Operation(summary = "删除电子书", description = "删除指定的电子书", 
+               security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/{id}")
     public Result<Object> deleteEbook(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -142,13 +154,15 @@ public class EbookController {
         }
     }
 
-    @Operation(summary = "更新阅读进度", description = "更新电子书的阅读进度")
+    @Operation(summary = "更新阅读进度", description = "更新电子书的阅读进度", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/{id}/progress")
     public Result<Object> updateReadingProgress(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "电子书ID") @PathVariable @NotNull Long id,
-            @Valid @RequestBody ReadingProgressRequest request) {
+            @Valid @RequestBody ReadingProgressRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -163,12 +177,14 @@ public class EbookController {
         }
     }
 
-    @Operation(summary = "获取阅读进度", description = "获取电子书的阅读进度")
+    @Operation(summary = "获取阅读进度", description = "获取电子书的阅读进度", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{id}/progress")
     public Result<Map<String, Object>> getReadingProgress(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -178,12 +194,14 @@ public class EbookController {
         return Result.success(progress);
     }
 
-    @Operation(summary = "收藏电子书", description = "收藏或取消收藏电子书")
+    @Operation(summary = "收藏电子书", description = "收藏或取消收藏电子书", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/{id}/favorite")
     public Result<Object> favoriteEbook(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -198,12 +216,14 @@ public class EbookController {
         }
     }
 
-    @Operation(summary = "取消收藏电子书", description = "取消收藏电子书")
+    @Operation(summary = "取消收藏电子书", description = "取消收藏电子书", 
+               security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/{id}/favorite")
     public Result<Object> unfavoriteEbook(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "电子书ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -218,13 +238,15 @@ public class EbookController {
         }
     }
 
-    @Operation(summary = "获取收藏的电子书", description = "获取用户收藏的电子书列表")
+    @Operation(summary = "获取收藏的电子书", description = "获取用户收藏的电子书列表", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/favorites")
     public Result<Page<Ebook>> getFavoriteEbooks(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -234,14 +256,16 @@ public class EbookController {
         return Result.success(ebooks);
     }
 
-    @Operation(summary = "搜索电子书", description = "搜索电子书")
+    @Operation(summary = "搜索电子书", description = "根据关键词搜索电子书", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/search")
     public Result<Page<Ebook>> searchEbooks(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");

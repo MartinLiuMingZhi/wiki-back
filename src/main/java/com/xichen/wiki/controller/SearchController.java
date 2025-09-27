@@ -7,8 +7,10 @@ import com.xichen.wiki.entity.Document;
 import com.xichen.wiki.entity.Ebook;
 import com.xichen.wiki.service.SearchService;
 import com.xichen.wiki.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -75,16 +77,18 @@ public class SearchController {
      * @param size 每页大小
      * @return 搜索结果，包含文档列表、电子书列表和分页信息
      */
-    @Operation(summary = "全局搜索", description = "搜索文档和电子书")
+    @Operation(summary = "全局搜索", description = "搜索文档和电子书", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
     public Result<Map<String, Object>> globalSearch(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "搜索类型") @RequestParam(defaultValue = "all") String type,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            HttpServletRequest httpRequest) {
         
-        // 从JWT token中解析用户ID
+        // 从请求头中获取JWT token
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
@@ -102,14 +106,16 @@ public class SearchController {
         }
     }
 
-    @Operation(summary = "搜索文档", description = "只搜索文档")
+    @Operation(summary = "搜索文档", description = "只搜索文档", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/documents")
     public Result<Page<Document>> searchDocuments(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
@@ -121,14 +127,16 @@ public class SearchController {
         }
     }
 
-    @Operation(summary = "搜索电子书", description = "只搜索电子书")
+    @Operation(summary = "搜索电子书", description = "只搜索电子书", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/ebooks")
     public Result<Page<Ebook>> searchEbooks(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size) {
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
@@ -140,13 +148,15 @@ public class SearchController {
         }
     }
 
-    @Operation(summary = "获取搜索建议", description = "根据输入获取搜索建议")
+    @Operation(summary = "获取搜索建议", description = "根据输入获取搜索建议", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/suggestions")
     public Result<List<String>> getSearchSuggestions(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
-            @Parameter(description = "建议数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit) {
+            @Parameter(description = "建议数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
@@ -173,12 +183,14 @@ public class SearchController {
         }
     }
 
-    @Operation(summary = "获取搜索历史", description = "获取用户的搜索历史")
+    @Operation(summary = "获取搜索历史", description = "获取用户的搜索历史", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/history")
     public Result<List<Map<String, Object>>> getSearchHistory(
-            @RequestHeader("Authorization") String token,
+            HttpServletRequest httpRequest,
             @Parameter(description = "数量") @RequestParam(defaultValue = "20") @Min(1) Integer limit) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
@@ -190,9 +202,11 @@ public class SearchController {
         }
     }
 
-    @Operation(summary = "清空搜索历史", description = "清空用户的搜索历史")
+    @Operation(summary = "清空搜索历史", description = "清空用户的搜索历史", 
+               security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/history")
-    public Result<Object> clearSearchHistory(@RequestHeader("Authorization") String token) {
+    public Result<Object> clearSearchHistory(HttpServletRequest httpRequest) {
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {
@@ -204,11 +218,13 @@ public class SearchController {
         }
     }
 
-    @Operation(summary = "高级搜索", description = "支持多条件的高级搜索")
+    @Operation(summary = "高级搜索", description = "支持多条件的高级搜索", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/advanced")
     public Result<Map<String, Object>> advancedSearch(
-            @RequestHeader("Authorization") String token,
-            @Valid @RequestBody AdvancedSearchRequest request) {
+            @Valid @RequestBody AdvancedSearchRequest request,
+            HttpServletRequest httpRequest) {
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
 
         try {

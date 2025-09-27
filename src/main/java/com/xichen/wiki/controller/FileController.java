@@ -5,8 +5,10 @@ import com.xichen.wiki.dto.ConfirmUploadRequest;
 import com.xichen.wiki.dto.GenerateUploadUrlRequest;
 import com.xichen.wiki.service.FileService;
 import com.xichen.wiki.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,25 +46,29 @@ public class FileController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Operation(summary = "上传文件", description = "上传文件到服务器")
+    @Operation(summary = "上传文件", description = "上传文件到服务器", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/upload")
     public Result<Map<String, Object>> uploadFile(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "文件") @RequestParam("file") @NotNull MultipartFile file,
-            @Parameter(description = "文件夹") @RequestParam(defaultValue = "general") String folder) {
+            @Parameter(description = "文件夹") @RequestParam(defaultValue = "general") String folder,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Map<String, Object> result = fileService.uploadFile(file, folder, userId);
         return Result.success(result);
     }
 
-    @Operation(summary = "生成上传URL", description = "生成预签名上传URL")
+    @Operation(summary = "生成上传URL", description = "生成预签名上传URL", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/upload-url")
     public Result<Map<String, Object>> generateUploadUrl(
-            @RequestHeader("Authorization") String token,
-            @Valid @RequestBody GenerateUploadUrlRequest request) {
+            @Valid @RequestBody GenerateUploadUrlRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Map<String, Object> result = fileService.generateUploadUrl(
@@ -74,24 +80,28 @@ public class FileController {
         return Result.success(result);
     }
 
-    @Operation(summary = "确认上传", description = "确认文件上传完成")
+    @Operation(summary = "确认上传", description = "确认文件上传完成", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping("/confirm-upload")
     public Result<String> confirmUpload(
-            @RequestHeader("Authorization") String token,
-            @Valid @RequestBody ConfirmUploadRequest request) {
+            @Valid @RequestBody ConfirmUploadRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         fileService.confirmUpload(request.getFileKey(), request.getFileSize(), userId);
         return Result.success("上传确认成功");
     }
 
-    @Operation(summary = "下载文件", description = "下载文件")
+    @Operation(summary = "下载文件", description = "下载文件", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/download/{fileKey}")
     public ResponseEntity<Resource> downloadFile(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "文件键") @PathVariable @NotBlank String fileKey) {
+            @Parameter(description = "文件键") @PathVariable @NotBlank String fileKey,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         try {
@@ -142,24 +152,28 @@ public class FileController {
         }
     }
 
-    @Operation(summary = "获取文件信息", description = "获取文件详细信息")
+    @Operation(summary = "获取文件信息", description = "获取文件详细信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/info/{fileKey}")
     public Result<Map<String, Object>> getFileInfo(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "文件键") @PathVariable @NotBlank String fileKey) {
+            @Parameter(description = "文件键") @PathVariable @NotBlank String fileKey,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         Map<String, Object> fileInfo = fileService.getFileInfo(fileKey, userId);
         return Result.success(fileInfo);
     }
 
-    @Operation(summary = "删除文件", description = "删除指定文件")
+    @Operation(summary = "删除文件", description = "删除指定文件", 
+               security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/{fileKey}")
     public Result<String> deleteFile(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "文件键") @PathVariable @NotBlank String fileKey) {
+            @Parameter(description = "文件键") @PathVariable @NotBlank String fileKey,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         
         fileService.deleteFile(fileKey, userId);

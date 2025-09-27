@@ -8,8 +8,10 @@ import com.xichen.wiki.dto.UpdateTagRequest;
 import com.xichen.wiki.entity.Tag;
 import com.xichen.wiki.service.TagService;
 import com.xichen.wiki.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
@@ -38,9 +40,11 @@ public class TagController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    @Operation(summary = "创建标签", description = "创建新的标签")
+    @Operation(summary = "创建标签", description = "创建新的标签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PostMapping
-    public Result<Tag> createTag(@RequestHeader("Authorization") String token, @Valid @RequestBody CreateTagRequest request) {
+    public Result<Tag> createTag(@Valid @RequestBody CreateTagRequest request, HttpServletRequest httpRequest) {
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -55,13 +59,15 @@ public class TagController {
         }
     }
 
-    @Operation(summary = "更新标签", description = "更新标签信息")
+    @Operation(summary = "更新标签", description = "更新标签信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @PutMapping("/{id}")
     public Result<Tag> updateTag(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "标签ID") @PathVariable @NotNull Long id,
-            @Valid @RequestBody UpdateTagRequest request) {
+            @Valid @RequestBody UpdateTagRequest request,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -76,12 +82,14 @@ public class TagController {
         }
     }
 
-    @Operation(summary = "获取标签详情", description = "获取指定标签的详细信息")
+    @Operation(summary = "获取标签详情", description = "获取指定标签的详细信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{id}")
     public Result<Map<String, Object>> getTagDetail(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "标签ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -99,14 +107,16 @@ public class TagController {
         }
     }
 
-    @Operation(summary = "获取用户标签列表", description = "分页获取用户的所有标签")
+    @Operation(summary = "获取用户标签列表", description = "分页获取用户的所有标签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping
     public Result<Page<Tag>> getUserTags(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") @Min(1) Integer page,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") @Min(1) Integer size,
-            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword) {
+            @Parameter(description = "搜索关键词") @RequestParam(required = false) String keyword,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -137,11 +147,18 @@ public class TagController {
         }
     }
 
-    @Operation(summary = "获取热门标签", description = "获取使用频率最高的标签")
+    @Operation(summary = "获取热门标签", description = "获取使用频率最高的标签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/popular")
     public Result<List<Tag>> getPopularTags(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit) {
+            @Parameter(description = "数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit,
+            HttpServletRequest httpRequest) {
+        
+        String token = httpRequest.getHeader("Authorization");
+        Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
+        if (userId == null) {
+            return Result.error(401, "用户未登录");
+        }
         
         try {
             List<Tag> tags = tagService.getPopularTags(limit);
@@ -152,13 +169,15 @@ public class TagController {
         }
     }
 
-    @Operation(summary = "搜索标签", description = "根据关键词搜索标签")
+    @Operation(summary = "搜索标签", description = "根据关键词搜索标签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/search")
     public Result<List<Tag>> searchTags(
-            @RequestHeader("Authorization") String token,
             @Parameter(description = "搜索关键词") @RequestParam @NotBlank String keyword,
-            @Parameter(description = "数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit) {
+            @Parameter(description = "数量") @RequestParam(defaultValue = "10") @Min(1) Integer limit,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -173,12 +192,14 @@ public class TagController {
         }
     }
 
-    @Operation(summary = "删除标签", description = "删除指定的标签")
+    @Operation(summary = "删除标签", description = "删除指定的标签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/{id}")
     public Result<Object> deleteTag(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "标签ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -193,9 +214,11 @@ public class TagController {
         }
     }
 
-    @Operation(summary = "批量删除标签", description = "批量删除多个标签")
+    @Operation(summary = "批量删除标签", description = "批量删除多个标签", 
+               security = @SecurityRequirement(name = "Authorization"))
     @DeleteMapping("/batch")
-    public Result<Object> deleteTags(@RequestHeader("Authorization") String token, @Valid @RequestBody BatchDeleteRequest request) {
+    public Result<Object> deleteTags(@Valid @RequestBody BatchDeleteRequest request, HttpServletRequest httpRequest) {
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -210,12 +233,14 @@ public class TagController {
         }
     }
 
-    @Operation(summary = "获取标签使用统计", description = "获取标签的使用次数统计")
+    @Operation(summary = "获取标签使用统计", description = "获取标签的使用次数统计", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/{id}/usage")
     public Result<Map<String, Object>> getTagUsage(
-            @RequestHeader("Authorization") String token,
-            @Parameter(description = "标签ID") @PathVariable @NotNull Long id) {
+            @Parameter(description = "标签ID") @PathVariable @NotNull Long id,
+            HttpServletRequest httpRequest) {
         
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");
@@ -234,9 +259,11 @@ public class TagController {
         }
     }
 
-    @Operation(summary = "获取标签统计", description = "获取用户标签统计信息")
+    @Operation(summary = "获取标签统计", description = "获取用户标签统计信息", 
+               security = @SecurityRequirement(name = "Authorization"))
     @GetMapping("/statistics")
-    public Result<Map<String, Object>> getTagStatistics(@RequestHeader("Authorization") String token) {
+    public Result<Map<String, Object>> getTagStatistics(HttpServletRequest httpRequest) {
+        String token = httpRequest.getHeader("Authorization");
         Long userId = jwtUtil.getUserIdFromAuthorizationHeader(token);
         if (userId == null) {
             return Result.error(401, "用户未登录");

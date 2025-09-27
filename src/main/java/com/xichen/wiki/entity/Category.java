@@ -13,7 +13,7 @@ import java.util.List;
  * 分类实体类
  */
 @Data
-@EqualsAndHashCode(callSuper = false)
+@EqualsAndHashCode(callSuper = false, exclude = {"children"})
 @TableName("categories")
 public class Category {
 

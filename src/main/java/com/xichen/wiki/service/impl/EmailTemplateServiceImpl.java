@@ -62,45 +62,45 @@ public class EmailTemplateServiceImpl implements IEmailTemplateService {
      */
     private String generateSimpleHtml(String code, String type, String email, int expireMinutes) {
         return String.format("""
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <meta charset="UTF-8">
-                <title>验证码邮件</title>
-                <style>
-                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                    .header { background: #667eea; color: white; padding: 20px; text-align: center; }
-                    .content { padding: 20px; background: #f9f9f9; }
-                    .code { font-size: 24px; font-weight: bold; color: #667eea; text-align: center; margin: 20px 0; }
-                    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
-                </style>
-            </head>
-            <body>
-                <div class="container">
-                    <div class="header">
-                        <h1>🔐 验证码邮件</h1>
-                        <p>Wiki知识管理系统</p>
-                    </div>
-                    <div class="content">
-                        <h2>您的验证码</h2>
-                        <p>您正在进行%s操作，请使用以下验证码完成验证：</p>
-                        <div class="code">%s</div>
-                        <p><strong>验证码信息：</strong></p>
-                        <ul>
-                            <li>验证码有效期：%d分钟</li>
-                            <li>验证码类型：%s</li>
-                            <li>接收邮箱：%s</li>
-                            <li>发送时间：%s</li>
-                        </ul>
-                        <p style="color: #e74c3c; font-weight: bold;">⚠️ 请勿将验证码告知他人，如非本人操作，请忽略此邮件。</p>
-                    </div>
-                    <div class="footer">
-                        <p>Wiki知识管理系统 - 让知识管理更简单、更高效</p>
-                    </div>
-                </div>
-            </body>
-            </html>
+            <!DOCTYPE html>%n
+            <html>%n
+            <head>%n
+                <meta charset="UTF-8">%n
+                <title>验证码邮件</title>%n
+                <style>%n
+                    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }%n
+                    .container { max-width: 600px; margin: 0 auto; padding: 20px; }%n
+                    .header { background: #667eea; color: white; padding: 20px; text-align: center; }%n
+                    .content { padding: 20px; background: #f9f9f9; }%n
+                    .code { font-size: 24px; font-weight: bold; color: #667eea; text-align: center; margin: 20px 0; }%n
+                    .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }%n
+                </style>%n
+            </head>%n
+            <body>%n
+                <div class="container">%n
+                    <div class="header">%n
+                        <h1>🔐 验证码邮件</h1>%n
+                        <p>Wiki知识管理系统</p>%n
+                    </div>%n
+                    <div class="content">%n
+                        <h2>您的验证码</h2>%n
+                        <p>您正在进行%s操作，请使用以下验证码完成验证：</p>%n
+                        <div class="code">%s</div>%n
+                        <p><strong>验证码信息：</strong></p>%n
+                        <ul>%n
+                            <li>验证码有效期：%d分钟</li>%n
+                            <li>验证码类型：%s</li>%n
+                            <li>接收邮箱：%s</li>%n
+                            <li>发送时间：%s</li>%n
+                        </ul>%n
+                        <p style="color: #e74c3c; font-weight: bold;">⚠️ 请勿将验证码告知他人，如非本人操作，请忽略此邮件。</p>%n
+                    </div>%n
+                    <div class="footer">%n
+                        <p>Wiki知识管理系统 - 让知识管理更简单、更高效</p>%n
+                    </div>%n
+                </div>%n
+            </body>%n
+            </html>%n
             """, 
             getTypeDisplayName(type), 
             code, 

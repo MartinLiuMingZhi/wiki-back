@@ -2,6 +2,7 @@ package com.xichen.wiki.dto;
 
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +15,7 @@ import java.util.List;
  * @since 2024-09-25
  */
 @Data
+@EqualsAndHashCode(exclude = {"bookmarkIds"})
 public class BatchDeleteBookmarkRequest {
     
     /**

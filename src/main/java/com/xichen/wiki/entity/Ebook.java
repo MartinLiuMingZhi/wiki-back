@@ -128,13 +128,6 @@ public class Ebook {
     @TableField("last_read_page")
     private Integer lastReadPage;
     
-    /**
-     * 总页数（已废弃，使用pageCount代替）
-     * @deprecated 使用 {@link #getPageCount()} 代替
-     */
-    @Deprecated
-    @TableField("total_pages")
-    private Integer totalPages;
 
     /**
      * 创建时间
